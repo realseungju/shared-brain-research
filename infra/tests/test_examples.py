@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -62,6 +64,37 @@ class ExampleArtifactTests(unittest.TestCase):
         self.assertEqual(projects, [], f"live research project 가 남아 있다: {projects}")
         meetings = sorted((REPO / "feedback/meetings").glob("*.md"))
         self.assertEqual(meetings, [], f"live meeting 이 남아 있다: {meetings}")
+
+    def test_git_tracked_tree_passes_research_lint(self) -> None:
+        """Git 이 실제 배포하는 파일만 재구성해 필수 빈 디렉터리 누락을 잡는다."""
+        try:
+            tracked = subprocess.run(
+                ["git", "-C", str(REPO), "ls-files", "-z"],
+                capture_output=True,
+                check=False,
+            )
+        except FileNotFoundError:
+            self.skipTest("git 실행 파일이 없다")
+        if tracked.returncode != 0:
+            self.skipTest("git 저장소가 아닌 환경이다")
+
+        shipped = self.root / "shipped"
+        for relative in tracked.stdout.decode("utf-8").split("\0"):
+            if not relative:
+                continue
+            source = REPO / relative
+            target = shipped / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
+
+        result = subprocess.run(
+            [sys.executable, str(shipped / "infra/research-lint.py")],
+            cwd=shipped,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 if __name__ == "__main__":
