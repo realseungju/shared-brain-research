@@ -106,6 +106,7 @@ TODO: 개인정보와 비공개 내용을 제거하고 인용·요약·AI 추론
 - status: captured
 - human_approved: no
 - linked_artifact:
+- reason:
 - validation:
 
 ## 확정된 결정

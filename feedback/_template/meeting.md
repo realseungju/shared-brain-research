@@ -29,6 +29,7 @@ status: captured
 - status: captured
 - human_approved: no
 - linked_artifact:
+- reason:
 - validation:
 
 ## 확정된 결정

@@ -76,11 +76,51 @@ def section_has_content(text: str, name: str) -> bool:
     )
     if not match:
         return False
-    for raw in match.group(1).splitlines():
-        line = raw.strip().strip("`")
-        if not line or line.casefold() in PLACEHOLDERS:
+    lines = match.group(1).splitlines()
+    table_scaffold: set[int] = set()
+
+    def table_cells(raw: str) -> list[str] | None:
+        line = raw.strip()
+        if not (line.startswith("|") and line.endswith("|")):
+            return None
+        return [cell.strip().strip("`") for cell in line[1:-1].split("|")]
+
+    def is_table_separator(cells: list[str] | None) -> bool:
+        return bool(cells) and all(
+            re.fullmatch(r":?-{3,}:?", cell.replace(" ", "")) for cell in cells
+        )
+
+    for index, raw in enumerate(lines):
+        cells = table_cells(raw)
+        if cells is None:
             continue
-        if line.startswith("|---") or line in {"- TODO", "- [ ]"}:
+        next_index = index + 1
+        while next_index < len(lines) and not lines[next_index].strip():
+            next_index += 1
+        next_cells = table_cells(lines[next_index]) if next_index < len(lines) else None
+        if is_table_separator(next_cells):
+            table_scaffold.update({index, next_index})
+
+    for index, raw in enumerate(lines):
+        line = raw.strip().strip("`")
+        if not line or is_placeholder(line):
+            continue
+        cells = table_cells(raw)
+        if cells is not None:
+            if index in table_scaffold or is_table_separator(cells):
+                continue
+            if all(is_placeholder(cell) for cell in cells):
+                continue
+            return True
+        bullet = re.fullmatch(r"[-*+]\s+(.+)", line)
+        if bullet:
+            content = bullet.group(1).strip()
+            if re.fullmatch(r"\[[ xX]\]\s*", content):
+                continue
+            plain = content.replace("**", "").strip()
+            if ":" in plain and is_placeholder(plain.split(":", 1)[1]):
+                continue
+        if line in {"- TODO", "- [ ]"}:
             continue
         return True
     return False
@@ -341,6 +381,7 @@ def check_meeting(root: Path, path: Path) -> None:
                 error(f"feedback 필수 필드 없음 '{field}' ({feedback_id}): {relative}")
         for field in (
             "linked_artifact",
+            "reason",
             "validation",
         ):
             if field not in fields:
@@ -376,6 +417,8 @@ def check_meeting(root: Path, path: Path) -> None:
         if kind == "decision-candidate" and status in {"accepted", "validated"}:
             if not fields.get("linked_artifact", "").startswith("system/decisions.md"):
                 error(f"승인된 decision-candidate가 ADR을 가리키지 않음 ({feedback_id}): {relative}")
+        if status in {"rejected", "deferred"} and is_placeholder(fields.get("reason", "")):
+            error(f"{status} feedback 이유 없음 ({feedback_id}): {relative}")
         if status == "validated" and is_placeholder(fields.get("validation", "")):
             error(f"validated feedback 검증 결과 없음 ({feedback_id}): {relative}")
 

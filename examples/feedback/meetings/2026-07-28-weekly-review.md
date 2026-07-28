@@ -29,6 +29,7 @@ status: triaged
 - status: accepted
 - human_approved: yes
 - linked_artifact: tasks/done/T2026-07-28-run-color-baseline.md
+- reason:
 - validation:
 
 ### FB-2026-07-28-02
@@ -40,7 +41,8 @@ status: triaged
 - status: rejected
 - human_approved: yes
 - linked_artifact:
-- validation: Tier 0 읽기 비용을 키워 채택하지 않음
+- reason: Tier 0 읽기 비용을 키워 채택하지 않음
+- validation:
 
 ### FB-2026-07-28-03
 
@@ -51,7 +53,8 @@ status: triaged
 - status: deferred
 - human_approved: yes
 - linked_artifact:
-- validation: 추가 표본 전에는 판단하지 않음
+- reason: 추가 표본 전에는 판단하지 않음
+- validation:
 
 ## 확정된 결정
 

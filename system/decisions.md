@@ -38,7 +38,7 @@
 ## ADR-003: 연구 핵심 provenance만 생성기와 lint로 강제한다
 - 날짜: 2026-07-28
 - 상태: 승인
-- 결정: research판은 experiment·claim·meeting feedback의 식별자, 근거, 사람 승인,
+- 결정: research판은 experiment·claim·meeting feedback의 식별자, 근거, 사람 승인 provenance,
   재현 필드를 생성기와 `research-lint`로 검사한다.
 - 근거: 이 배포판의 대상은 계산과학·ML 연구자다. 결과와 해석, 발언과 결정이 섞이면
   다음 AI가 잘못된 주장을 이어받는다. 형식 취향이 아니라 provenance 유실을 막는 필드만 강제한다.
@@ -60,7 +60,8 @@
 - 근거: 미팅 발언·요약·추론은 사실이나 합의가 아니다. 공개 Git에 원문을 넣으면 개인정보와
   비공개 연구 내용이 영구 이력에 남는다.
 - 영향: accepted feedback은 실제 산출물 링크가 필요하고 decision-candidate는 ADR을 가리킨다.
-  구현 완료와 해결 검증은 별도 상태다.
+  구현 완료와 해결 검증은 별도 상태다. `human_approved`는 승인 신원을 인증하지 않으므로
+  실제 승인자는 Git commit·PR 리뷰에서 확인한다.
 
 ## ADR-006: lite는 자동 동기화하지 않는 기준점이다
 - 날짜: 2026-07-28

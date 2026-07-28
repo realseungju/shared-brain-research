@@ -87,9 +87,11 @@ python infra/new-meeting.py {slug} --title "미팅 제목" --project {project}
 
 - 기본 `visibility`는 `redacted`다.
 - 발언은 사실이나 결정이 아니다. 인용·요약·AI 추론을 구분한다.
-- AI는 후보를 추출할 수 있지만 `accepted`로 승인할 수 없다.
+- AI는 후보를 추출할 수 있지만 `human_approved: yes`를 사람 대신 기록하지 않는다.
 - 사람 승인과 연결 산출물이 있는 feedback만 accepted가 된다.
 - 구현 완료를 validated로 자동 바꾸지 않는다. 문제 해결 여부를 따로 확인한다.
+- `human_approved`는 provenance 기록이지 신원 인증이 아니다. 실제 승인은 Git 리뷰 이력으로
+  확인한다.
 
 `personal/`은 상속 호환성을 위한 빈 확장점이며 이 배포판의 기능 범위가 아니다.
 

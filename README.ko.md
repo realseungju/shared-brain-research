@@ -19,11 +19,12 @@ Shared Brain Research는 저장소를 Claude Code·Hermes·Orca·Codex CLI 같�
 
 ## 왜 필요한가
 
-연구 인계에서는 실행 커밋, 데이터셋 버전, 측정과 추론의 구분, 사람이 실제 승인한 문장이
-쉽게 사라집니다. 이 프로젝트는 그 경계를 강제합니다.
+연구 인계에서는 실행 커밋, 데이터셋 버전, 측정과 추론의 구분, 사람이 검토했다고 기록된
+문장이 쉽게 사라집니다. 이 프로젝트는 그 경계를 강제합니다.
 
 - 닫힌 실험에는 재현 조건·결과·해석·한계가 모두 있어야 합니다.
-- claim은 연결된 실험 근거와 사람 검토 없이는 `supported`가 될 수 없습니다.
+- lint 계약상 claim은 연결된 실험 근거와 `human_reviewed: yes` 없이는 `supported`가 될 수
+  없습니다.
 - 미팅 발언은 사람이 atomic feedback마다 수락·거절·보류하기 전까지 출처 자료입니다.
 - session은 작은 색인형 인계를 남겨 다른 AI가 저장소 전체를 읽지 않고 이어갑니다.
 - `research-lint`가 로컬과 CI에서 이 계약을 검사합니다.
@@ -102,9 +103,11 @@ visibility는 `redacted`입니다. 참여자는 역할로 표시하고, 비공�
 공개 저장소 밖에 둡니다.
 
 feedback 항목 하나에는 진술 하나와 출처 방식 `quote | paraphrase | inference`가 들어갑니다.
-AI는 후보를 capture할 수 있지만 `accepted | rejected | deferred | validated` 전환은 사람이
-승인해야 합니다. accepted 항목은 실제 task·research 문서·claim·ADR을 가리켜야 하고,
-validated에는 확인 결과도 필요합니다.
+triage된 상태는 `human_approved: yes`를 기록하고 lint는 이 provenance 필드와 상태 정합성을
+검사합니다. 다만 누가 필드를 수정했는지는 인증할 수 없으므로 승인자 확인이 중요하면 commit·PR
+리뷰와 branch protection을 사용해야 합니다. accepted 항목은 실제 task·research
+문서·claim·ADR을 가리켜야 합니다. rejected·deferred에는 이유가, validated에는 실제 확인
+결과가 필요합니다.
 
 자세한 규칙은 [`feedback/README.md`](feedback/README.md), 완성 예시는
 [`example meeting`](examples/feedback/meetings/2026-07-28-weekly-review.md)에 있습니다.
@@ -133,7 +136,7 @@ stub이라 지원 플랫폼마다 같은 시작 계약을 사용합니다.
 ## 포함 기능
 
 - Git 기반 연구 질문·실험·근거·claim 기록
-- supported claim과 미팅 feedback의 사람 승인 게이트
+- supported claim과 미팅 feedback의 사람 검토 provenance 필드
 - redacted 기본 미팅 기록과 accept/reject/defer/validate 상태
 - 교차 AI task·session 인계
 - Claude Code·Hermes·Codex CLI·Orca·Gemini·Copilot 진입점

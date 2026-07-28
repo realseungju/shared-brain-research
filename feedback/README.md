@@ -16,11 +16,17 @@ meeting source
 → validation
 ```
 
-- AI는 feedback 후보를 만들 수 있지만 `accepted`로 승인할 수 없다.
-- `accepted`와 `validated`에는 `human_approved: yes`가 필요하다.
+- AI는 feedback 후보를 만들 수 있지만 `human_approved: yes`를 사람 대신 기록하지 않는다.
+- `captured` 이외의 상태에는 `human_approved: yes`가 필요하다. 이 필드는 승인 provenance
+  기록이지 승인자 신원을 인증하는 장치가 아니다. lint는 값과 상태 정합성만 검사하므로 실제
+  사람 승인은 commit·PR 리뷰나 branch protection으로 확인한다.
 - `accepted`에는 실제 task·가설·claim·ADR 경로인 `linked_artifact`가 필요하다.
+- `rejected`와 `deferred`에는 분류 이유인 `reason`이 필요하다. `validation`은 반영 뒤 문제
+  해결을 확인한 결과에만 쓴다.
 - 구현 완료와 문제 해결은 다르다. 확인 결과가 있어야 `validated`다.
 - `decision-candidate`는 사람이 승인하고 `system/decisions.md`에 기록한 뒤에만 accepted가 된다.
+- meeting을 `closed`로 바꾸려면 `captured`, `accepted`, `deferred` feedback이 남아 있으면
+  안 된다. `rejected` 또는 실제 확인까지 끝난 `validated`만 종결 상태다.
 
 정확한 필드와 허용값은 `system/conventions.md`를 따른다.
 

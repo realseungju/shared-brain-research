@@ -124,11 +124,20 @@ backlog → doing → done
 | `status` | `captured \| accepted \| rejected \| deferred \| validated` |
 | `human_approved` | `yes \| no` |
 | `linked_artifact` | 연결 task·가설·claim·ADR 파일 |
-| `validation` | 반영 뒤 문제 해결 확인 |
+| `reason` | rejected·deferred로 분류한 이유 |
+| `validation` | validated 전환 전, 반영 뒤 문제 해결을 확인한 결과 |
 
 `captured` 이외의 triage는 사람 승인이 필요하다. accepted·validated에는 존재하는 연결 파일,
 validated에는 실제 확인 결과가 필요하다. 승인된 `decision-candidate`는
 `system/decisions.md#ADR-...`을 가리켜야 한다.
+
+`rejected`와 `deferred`에는 `reason`이 필수다. `validation`에 분류 이유를 대신 쓰지 않는다.
+meeting의 `status: closed`는 모든 feedback이 `rejected` 또는 `validated`일 때만 허용한다.
+`captured`, `accepted`, `deferred`가 하나라도 남아 있으면 닫을 수 없다.
+
+`human_approved`는 승인 provenance를 기록하는 필드이며 작성자 신원을 인증하지 않는다.
+lint는 필드와 상태 정합성을 검사하고, 실제 사람 승인 여부는 Git commit·PR 리뷰나 branch
+protection으로 확인한다.
 
 ## Commit
 

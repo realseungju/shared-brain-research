@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from support import make_brain, make_research_project, run_script, write
+from support import REPO, make_brain, make_research_project, run_script, write
 
 
 def experiment_body(
@@ -73,6 +73,7 @@ def meeting_body(
     feedback_status: str = "accepted",
     approved: str = "yes",
     linked_artifact: str = "tasks/backlog/T2026-07-28-follow-up.md",
+    reason: str = "",
     validation: str = "",
     meeting_status: str = "triaged",
 ) -> str:
@@ -105,6 +106,7 @@ status: {meeting_status}
 - status: {feedback_status}
 - human_approved: {approved}
 - linked_artifact: {linked_artifact}
+- reason: {reason}
 - validation: {validation}
 
 ## 확정된 결정
@@ -177,6 +179,51 @@ phase: planning
         self.add_experiment()
         result = self.lint()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_closed_experiment_rejects_scaffold_only_sections(self) -> None:
+        body = experiment_body()
+        body = body.replace(
+            "세 시드 평균 0.81.",
+            "| 조건 | 지표 | 값 | N |\n|---|---|---|---|",
+        )
+        body = body.replace(
+            "candidate C001을 검토한다.",
+            "- claim candidate:\n- 근거 종류:\n- 이 결과로 말할 수 없는 것:",
+        )
+        body = body.replace(
+            "가상 데이터만 사용했다.",
+            "- 미확인 교란:\n- 일반화할 수 없는 범위:",
+        )
+        self.add_experiment(body)
+
+        result = self.lint()
+
+        self.assertEqual(result.returncode, 1)
+        for section in ("결과", "해석", "한계"):
+            self.assertIn(f"닫힌 experiment 내용 없음 '{section}'", result.stdout)
+
+    def test_experiment_template_cannot_close_without_content(self) -> None:
+        body = (REPO / "research/_template/experiment.md").read_text(encoding="utf-8")
+        replacements = {
+            "id: EYYYY-MM-DD-slug": "id: E2026-07-28-baseline",
+            "project: project-slug": "project: demo-project",
+            "date: YYYY-MM-DD": "date: 2026-07-28",
+            "status: planned": "status: completed",
+            "evidence_kind: unverified": "evidence_kind: measured",
+            "dataset_version: TBD": "dataset_version: demo-v1",
+            "code_commit: TBD": "code_commit: abc1234",
+            "seed_or_repeats: TBD": "seed_or_repeats: seeds-1-3",
+            "artifact: TBD": "artifact: external/demo/result.json",
+        }
+        for old, new in replacements.items():
+            body = body.replace(old, new)
+        self.add_experiment(body)
+
+        result = self.lint()
+
+        self.assertEqual(result.returncode, 1)
+        for section in ("결과", "해석", "한계"):
+            self.assertIn(f"닫힌 experiment 내용 없음 '{section}'", result.stdout)
 
     def test_supported_claim_rejects_unverified_evidence(self) -> None:
         experiment = self.add_experiment()
@@ -276,6 +323,36 @@ phase: planning
         self.assertEqual(result.returncode, 1)
         self.assertIn("feedback 필수 필드 없음 'scope'", result.stdout)
 
+    def test_rejected_and_deferred_feedback_require_reason(self) -> None:
+        for status in ("rejected", "deferred"):
+            with self.subTest(status=status):
+                write(
+                    self.root / "feedback/meetings/2026-07-28-review.md",
+                    meeting_body(
+                        feedback_status=status,
+                        linked_artifact="",
+                        reason="",
+                    ),
+                )
+                result = self.lint()
+                self.assertEqual(result.returncode, 1)
+                self.assertIn(f"{status} feedback 이유 없음", result.stdout)
+
+    def test_feedback_reason_does_not_use_validation_field(self) -> None:
+        for status in ("rejected", "deferred"):
+            with self.subTest(status=status):
+                write(
+                    self.root / "feedback/meetings/2026-07-28-review.md",
+                    meeting_body(
+                        feedback_status=status,
+                        linked_artifact="",
+                        reason="사람이 분류한 이유",
+                        validation="",
+                    ),
+                )
+                result = self.lint()
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_accepted_feedback_requires_existing_artifact(self) -> None:
         write(
             self.root / "feedback/meetings/2026-07-28-review.md",
@@ -314,18 +391,50 @@ phase: planning
         self.assertEqual(result.returncode, 1)
         self.assertIn("검증 결과 없음", result.stdout)
 
-    def test_closed_meeting_rejects_deferred_feedback(self) -> None:
-        write(
-            self.root / "feedback/meetings/2026-07-28-review.md",
-            meeting_body(
-                feedback_status="deferred",
-                linked_artifact="",
-                meeting_status="closed",
-            ),
+    def test_closed_meeting_rejects_unfinished_feedback(self) -> None:
+        self.add_follow_up_task()
+        for status in ("captured", "accepted", "deferred"):
+            with self.subTest(status=status):
+                write(
+                    self.root / "feedback/meetings/2026-07-28-review.md",
+                    meeting_body(
+                        feedback_status=status,
+                        approved="no" if status == "captured" else "yes",
+                        linked_artifact=(
+                            "tasks/backlog/T2026-07-28-follow-up.md"
+                            if status == "accepted"
+                            else ""
+                        ),
+                        reason="추가 근거 대기" if status == "deferred" else "",
+                        meeting_status="closed",
+                    ),
+                )
+                result = self.lint()
+                self.assertEqual(result.returncode, 1)
+                self.assertIn("closed meeting에 미종결", result.stdout)
+
+    def test_closed_meeting_accepts_terminal_feedback(self) -> None:
+        self.add_follow_up_task()
+        cases = (
+            {
+                "feedback_status": "rejected",
+                "linked_artifact": "",
+                "reason": "범위 밖 요청",
+            },
+            {
+                "feedback_status": "validated",
+                "linked_artifact": "tasks/backlog/T2026-07-28-follow-up.md",
+                "validation": "재현 확인",
+            },
         )
-        result = self.lint()
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("closed meeting에 미종결", result.stdout)
+        for fields in cases:
+            with self.subTest(status=fields["feedback_status"]):
+                write(
+                    self.root / "feedback/meetings/2026-07-28-review.md",
+                    meeting_body(meeting_status="closed", **fields),
+                )
+                result = self.lint()
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 if __name__ == "__main__":

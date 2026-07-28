@@ -52,20 +52,22 @@ artifact: TBD
 
 ## 결과
 
+TODO: 관측 결과 행을 추가한다.
+
 | 조건 | 지표 | 값 | N |
 |---|---|---|---|
 
 ## 해석
 
-- claim candidate:
-- 근거 종류: frontmatter `evidence_kind`
-- 지표의 상·하한과 이 값의 위치:
-- 이 결과로 **말할 수 없는 것**:
+- claim candidate: TODO
+- 근거 종류: TODO
+- 지표의 상·하한과 이 값의 위치: TODO
+- 이 결과로 **말할 수 없는 것**: TODO
 
 ## 한계
 
-- 미확인 교란:
-- 일반화할 수 없는 범위:
+- 미확인 교란: TODO
+- 일반화할 수 없는 범위: TODO
 
 ## 다음 단계
 

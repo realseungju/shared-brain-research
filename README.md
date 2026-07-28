@@ -21,12 +21,13 @@ sets intent, approves claims and feedback, and reviews the evidence.
 ## Why it exists
 
 Research handoffs usually lose the details that matter: which commit ran, which dataset
-version was used, whether a result was measured or inferred, and which statement a human
-actually approved. This project keeps those boundaries explicit:
+version was used, whether a result was measured or inferred, and which statement was
+recorded as human-reviewed. This project keeps those boundaries explicit:
 
 - Every closed experiment records reproducibility fields, results, interpretation, and
   limits.
-- A claim cannot become `supported` without linked experiment evidence and human review.
+- Under the lint contract, a claim cannot become `supported` without linked experiment
+  evidence and `human_reviewed: yes`.
 - Meeting comments remain source material until a human accepts, rejects, or defers each
   atomic feedback item.
 - Sessions leave a small indexed handoff, so a different agent can continue without
@@ -110,9 +111,11 @@ record. The default visibility is `redacted`; participants should be described b
 and private transcripts or large artifacts should stay outside the public repository.
 
 Each feedback item has one statement and a source mode: quote, paraphrase, or inference.
-The agent may capture candidates, but a human must approve every move to `accepted`,
-`rejected`, `deferred`, or `validated`. Accepted feedback must point to a real task,
-research artifact, claim, or ADR. `validated` also needs an observed verification result.
+Every triaged state records `human_approved: yes`; lint checks that provenance marker and
+the state transition, but it cannot authenticate who edited the field. Use commit or PR
+review and branch protection when approval identity matters. Accepted feedback must point
+to a real task, research artifact, claim, or ADR. Rejected and deferred items require a
+reason, while `validated` requires an observed verification result.
 
 See [`feedback/README.md`](feedback/README.md) and the
 [example meeting](examples/feedback/meetings/2026-07-28-weekly-review.md).
@@ -141,7 +144,7 @@ stubs pointing to it, so every supported platform gets the same startup contract
 ## Included
 
 - Git-native question, experiment, evidence, and claim records
-- Human review gates for supported claims and meeting feedback
+- Human-review provenance fields for supported claims and meeting feedback
 - Redacted-by-default meeting capture with accept/reject/defer/validate states
 - Cross-agent task and session handoffs
 - Claude Code, Hermes, Codex CLI, Orca, Gemini, and Copilot entry points
