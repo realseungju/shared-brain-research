@@ -122,6 +122,7 @@ tasks/        backlog / doing / done
 specs/        구현 명세
 inbox/        아직 계획되지 않은 아이디어
 knowledge/    재사용 가능한 교훈
+skills/       에이전트 스킬 — 주장 타당성 체크리스트 포함
 examples/     live 상태가 아닌 완성 fixture
 infra/        생성기·research lint·테스트·Git hook
 personal/     빈 호환성 확장점
@@ -137,6 +138,8 @@ stub이라 지원 플랫폼마다 같은 시작 계약을 사용합니다.
 
 - Git 기반 연구 질문·실험·근거·claim 기록
 - supported claim과 미팅 feedback의 사람 검토 provenance 필드
+- lint가 닿지 못하는 층을 위한 주장 타당성 체크리스트(`skills/experiment-claim-check`) —
+  경계에 붙은 스윕, argmax로만 읽은 모델, 검정 없는 차이
 - redacted 기본 미팅 기록과 accept/reject/defer/validate 상태
 - 교차 AI task·session 인계
 - Claude Code·Hermes·Codex CLI·Orca·Gemini·Copilot 진입점

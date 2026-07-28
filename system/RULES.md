@@ -80,6 +80,8 @@ python infra/new-meeting.py {slug} --title "미팅 제목" --project {project}
 - 원시 데이터·모델 가중치·비밀정보는 Git에 넣지 않는다. 위치만 적는다.
 - 정량 결과는 dataset/version, code commit, seed·반복, artifact, 근거 종류를 남긴다.
 - `python infra/research-lint.py`가 실험·claim·feedback 계약까지 검사한다.
+- 수치를 **주장으로 굳히기 직전**(claim supported 승격·experiment 닫기·context로 옮기기)에는
+  `skills/experiment-claim-check`를 적용한다. lint는 근거의 존재만 보고 타당성은 못 본다.
 
 ## 미팅 Feedback
 

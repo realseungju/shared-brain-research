@@ -68,6 +68,10 @@ python infra/new-experiment.py baseline \
 AI는 claim candidate를 작성하고 근거를 연결할 수 있지만 사람 대신 supported로 승인하지
 않는다. 정확한 frontmatter와 항목 스키마는 `system/conventions.md`를 따른다.
 
+`supported`로 올리기 전과 experiment를 닫기 전에 `skills/experiment-claim-check`를 적용한다.
+lint는 근거가 **있는지**만 보고 **타당한지**는 못 본다 — 경계에 붙은 스윕, argmax로만 읽은
+모델, 재본 적 없는 "천장", 검정 없는 "+N pt"는 필드를 다 채운 채로 통과한다(ADR-007).
+
 ## Task·Session·Feedback과의 관계
 
 - `tasks/`는 할 일, `research/`는 질문과 알아낸 것, `system/sessions/`는 인계 기록이다.

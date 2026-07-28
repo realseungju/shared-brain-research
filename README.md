@@ -130,6 +130,7 @@ tasks/        backlog / doing / done
 specs/        implementation specifications
 inbox/        captured ideas not yet planned
 knowledge/    reusable lessons
+skills/       agent skills, including the claim-validity checklist
 examples/     complete fixtures, never live state
 infra/        generators, research lint, tests, and Git hook
 personal/     empty compatibility extension point
@@ -145,6 +146,8 @@ stubs pointing to it, so every supported platform gets the same startup contract
 
 - Git-native question, experiment, evidence, and claim records
 - Human-review provenance fields for supported claims and meeting feedback
+- A claim-validity checklist (`skills/experiment-claim-check`) for the layer lint cannot
+  reach: boundary-pinned sweeps, argmax-only readouts, untested deltas
 - Redacted-by-default meeting capture with accept/reject/defer/validate states
 - Cross-agent task and session handoffs
 - Claude Code, Hermes, Codex CLI, Orca, Gemini, and Copilot entry points
