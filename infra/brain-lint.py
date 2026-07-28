@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared Brain Lite의 최소 구조 불변식을 읽기 전용으로 검사한다."""
+"""Shared Brain 공통 코어의 최소 구조 불변식을 읽기 전용으로 검사한다."""
 from __future__ import annotations
 
 from datetime import datetime

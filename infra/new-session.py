@@ -36,7 +36,7 @@ def main() -> int:
     except (AttributeError, ValueError):
         pass
 
-    parser = argparse.ArgumentParser(description="Shared Brain Lite session 요약 생성")
+    parser = argparse.ArgumentParser(description="Shared Brain Research session 요약 생성")
     parser.add_argument("slug")
     parser.add_argument("--agent", required=True)
     parser.add_argument("--tags", required=True, help="쉼표 구분")
@@ -73,7 +73,7 @@ def main() -> int:
 
     root = Path(args.root).resolve() if args.root else repo_root()
     if not (root / "system" / "RULES.md").is_file():
-        print(f"[ERROR] Shared Brain Lite 루트가 아님: {root}", file=sys.stderr)
+        print(f"[ERROR] Shared Brain Research 루트가 아님: {root}", file=sys.stderr)
         return 2
 
     sessions = root / "system" / "sessions"

@@ -19,4 +19,4 @@ if [ -z "$PY" ]; then
   exit 1
 fi
 
-exec "$PY" infra/brain-lint.py
+exec "$PY" infra/research-lint.py

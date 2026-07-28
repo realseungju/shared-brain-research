@@ -1,4 +1,4 @@
-name: brain-lint
+name: research-lint
 
 on:
   push:
@@ -19,5 +19,5 @@ jobs:
           python-version: '3.x'
       - name: regression tests
         run: python -m unittest discover -s infra/tests -v
-      - name: brain-lint
-        run: python infra/brain-lint.py
+      - name: research-lint
+        run: python infra/research-lint.py

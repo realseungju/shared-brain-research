@@ -31,7 +31,7 @@ def main() -> int:
     except (AttributeError, ValueError):
         pass
 
-    parser = argparse.ArgumentParser(description="Shared Brain Lite task 생성")
+    parser = argparse.ArgumentParser(description="Shared Brain Research task 생성")
     parser.add_argument("slug", help="소문자 영문·숫자·하이픈")
     parser.add_argument("--title", required=True, help="task 제목")
     parser.add_argument("--phase", choices=VALID_PHASES, default="planning")
@@ -55,7 +55,7 @@ def main() -> int:
 
     root = Path(args.root).resolve() if args.root else repo_root()
     if not (root / "system" / "RULES.md").is_file():
-        print(f"[ERROR] Shared Brain Lite 루트가 아님: {root}", file=sys.stderr)
+        print(f"[ERROR] Shared Brain Research 루트가 아님: {root}", file=sys.stderr)
         return 2
     backlog = root / "tasks" / "backlog"
     backlog.mkdir(parents=True, exist_ok=True)

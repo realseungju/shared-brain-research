@@ -1,162 +1,193 @@
-# Shared Brain Lite
+# Shared Brain Research
 
-A lightweight starter for using a Git repository as **shared long-term memory across AI agents**.
+Git-native experiment memory and cross-agent handoff for computational researchers.
 
 한국어 문서: [README.ko.md](README.ko.md)
 
-Chat sessions forget. Different tools — Claude, Codex, Gemini, Copilot — don't share memory
-with each other. This repo makes the *repository* the memory instead: plain Markdown, one
-entry point every tool reads, and a lint gate that keeps the records honest.
+Shared Brain Research turns a repository into the durable working memory for Claude Code,
+Hermes, Orca, Codex CLI, and other coding agents. It keeps research questions, experiment
+conditions, evidence, claims, meeting feedback, tasks, and session handoffs in plain
+Markdown with a lint gate that rejects unsupported state transitions.
 
 ```text
-capture → plan/spec → task → work → session summary → next agent
+question → hypothesis → experiment → evidence → human-reviewed claim
+meeting → atomic feedback → human triage → linked work → validation
 ```
 
-## Why this instead of a notes folder
+It is not a note-taking app or a model runner. The repository root is the AI platform's
+project or working directory. The agent does the file and Python work; the researcher
+sets intent, approves claims and feedback, and reviews the evidence.
 
-Free-form notes rot because nothing enforces them. Three mechanisms keep this from rotting:
+## Why it exists
 
-- **Tiered reading.** An agent reads `system/RULES.md`, `system/context.md`, the last few
-  lines of the session index, and the filenames in `tasks/doing/` — nothing else, until a
-  specific task needs it. Onboarding cost stays flat as the repo grows.
-- **Generators, not hand-editing.** Task and session files are created by scripts, so every
-  record has the same frontmatter schema and lands in the right place.
-- **A lint gate.** `brain-lint.py` runs on pre-commit and in CI. A session with no index
-  entry, a task in `done/` with no result, a task id that disagrees with its filename — all
-  rejected. Structure that isn't checked is structure that quietly stops being true.
+Research handoffs usually lose the details that matter: which commit ran, which dataset
+version was used, whether a result was measured or inferred, and which statement a human
+actually approved. This project keeps those boundaries explicit:
 
-## How you use it
-
-Shared Brain Lite is not a separate app to run. **The repository root is the AI agent's
-working directory and its long-term memory.**
-
-Create a repository from this template or clone it, then open that directory as the
-project/workspace in Orca, Hermes, Claude Code, Codex CLI, or another coding-agent
-platform. The exact label varies by tool — project directory, workspace, repository, or
-working directory — but it must point to the root containing `AGENTS.md`, `CLAUDE.md`,
-and `system/`.
-
-The entry file for each supported agent directs it to the same operating rules and current
-context. You talk to the agent in natural language; the agent reads the relevant memory,
-runs the generators and lint, and records enough state for the next session or another
-agent to continue.
+- Every closed experiment records reproducibility fields, results, interpretation, and
+  limits.
+- A claim cannot become `supported` without linked experiment evidence and human review.
+- Meeting comments remain source material until a human accepts, rejects, or defers each
+  atomic feedback item.
+- Sessions leave a small indexed handoff, so a different agent can continue without
+  loading the whole repository.
+- `research-lint` enforces the contract locally and in CI.
 
 ## Quick start
 
-Requirements: Git and Python 3.10+ in the agent's environment. No third-party Python
-packages.
+Requirements: Git and Python 3.10+ in the agent environment. There are no third-party
+Python dependencies.
 
 1. Create a repository from this template or clone it.
-2. Set the repository root as your AI platform's working directory and start the agent
-   there.
-3. Give the agent an initialization request such as:
+2. Open its root as the project, workspace, repository, or working directory in your AI
+   platform. It must be the directory containing `AGENTS.md`, `CLAUDE.md`, and `system/`.
+3. Start with a natural-language request:
 
-> Read the repository instructions first. Initialize this shared brain for my research on
-> [topic], update `system/context.md`, and create a first task for [goal].
+> Read the repository instructions first. Initialize a research project named
+> `my-project`, update the current context, record my first research question and
+> hypothesis, and create a planned baseline experiment. Ask me before accepting any claim
+> or meeting feedback.
 
-4. Continue working in natural language. When you start or finish a task, ask the agent to
-   update the shared brain. Use the same repository from another AI platform to continue
-   from the recorded state.
-5. Ask the agent to commit and push when the memory needs to persist across machines or be
-   shared with another person. Your platform may ask you to approve those Git operations.
+4. Keep using the same repository from Claude Code, Hermes, Orca, Codex CLI, or another
+   compatible agent. Commit and push when another machine or colleague needs the state.
 
-You normally do **not** type the Python commands yourself. The agent runs commands like
-these as part of the workflow:
+You normally do **not** type the Python commands yourself. Agents use these canonical
+operations while carrying out your requests:
 
 ```sh
-python infra/new-task.py first-task --title "My first task"
-python infra/new-session.py first-session \
-  --agent Codex \
-  --tags demo \
-  --hook "One line the next agent reads to decide whether to open this" \
-  --did "Created the first task and checked the structure" \
-  --next "Write the real project context"
-python infra/brain-lint.py
+python infra/new-task.py baseline --title "Run baseline"
+python infra/new-experiment.py baseline \
+  --project my-project \
+  --title "Baseline" \
+  --hypothesis H001
+python infra/new-meeting.py weekly-review \
+  --title "Weekly research review" \
+  --project my-project
+python infra/new-session.py baseline-result \
+  --agent Hermes \
+  --tags research,handoff \
+  --hook "Open the baseline experiment and C001" \
+  --did "Recorded the baseline result" \
+  --next "Review whether C001 is supported"
+python infra/research-lint.py
 ```
 
-They are documented so agents know the canonical operations and humans can troubleshoot
-or verify them manually. Task fields and allowed values are defined in
+The commands are documented for agent consistency and manual troubleshooting. Exact
+schemas and allowed values live in
 [`system/conventions.md`](system/conventions.md).
+
+## Research workflow
+
+Each live project uses this shape:
+
+```text
+research/{project}/
+  overview.md
+  questions.md
+  claims.md
+  experiments/
+    EYYYY-MM-DD-{slug}.md
+```
+
+Ask an agent to copy the three files from `research/_template/`, create `experiments/`,
+and replace the placeholders. Experiments start as `planned` or `running`. Closing one as
+`completed`, `negative-result`, or `invalidated` requires a dataset version, code commit,
+seed or repeat condition, artifact location, evidence kind, results, interpretation, and
+limits.
+
+Claims are deliberately separate from results. A measured result can still have a narrow
+scope or a confound. `supported` therefore requires an existing experiment path,
+`measured` or `estimated` evidence, and `human_reviewed: yes`.
+
+See the complete project under
+[`examples/research/demo-vision/`](examples/research/demo-vision/) and the
+[Claude Code → Hermes handoff fixture](examples/cross-agent-demo/README.md).
+
+## Meeting feedback
+
+Ask the agent to turn a meeting, review, or colleague observation into a redacted meeting
+record. The default visibility is `redacted`; participants should be described by role,
+and private transcripts or large artifacts should stay outside the public repository.
+
+Each feedback item has one statement and a source mode: quote, paraphrase, or inference.
+The agent may capture candidates, but a human must approve every move to `accepted`,
+`rejected`, `deferred`, or `validated`. Accepted feedback must point to a real task,
+research artifact, claim, or ADR. `validated` also needs an observed verification result.
+
+See [`feedback/README.md`](feedback/README.md) and the
+[example meeting](examples/feedback/meetings/2026-07-28-weekly-review.md).
 
 ## Layout
 
 ```text
-system/       rules, current context, session summaries, ADRs
+system/       operating rules, current context, session handoffs, ADRs
+research/     questions, experiments, evidence, and claims by project
+feedback/     redacted meeting records and human-triaged feedback
 tasks/        backlog / doing / done
-specs/        what to build, before building it
-inbox/        captured ideas, not yet planned
-knowledge/    reusable lessons that outlive a single project
-research/     per-project research notes and experiment records (Tier 2)
-skills/       extension point for tool-specific skills
-personal/     extension point, empty by default
-examples/     filled-in artifacts to read — not live records
-infra/        generators, lint, tests, Git hook
+specs/        implementation specifications
+inbox/        captured ideas not yet planned
+knowledge/    reusable lessons
+examples/     complete fixtures, never live state
+infra/        generators, research lint, tests, and Git hook
+personal/     empty compatibility extension point
 ```
 
-The live tree ships **empty on purpose**: no session summaries, no closed tasks, a
-placeholder `system/context.md`. If you create a repo from this template you inherit the
-structure, not someone else's Tier 0. To see what a filled-in session summary or a closed
-task actually looks like, read [`examples/`](examples/) — a regression test keeps those
-examples in sync with the schema `brain-lint` enforces.
+The live task, session, research-project, and meeting areas ship empty. Examples are kept
+outside the live tree and are exercised by regression tests.
 
-`system/RULES.md` is the single source of operating rules. `CLAUDE.md`, `AGENTS.md`,
-`GEMINI.md`, and `.github/copilot-instructions.md` are thin stubs that all point at it, so
-adding a new AI tool means adding one more stub — not one more copy of the rules.
+`system/RULES.md` is the single source of operating rules. Agent entry files are thin
+stubs pointing to it, so every supported platform gets the same startup contract.
 
 ## Included
 
-- Shared entry points for Claude, Codex, Gemini, and Copilot
-- Tier 0/1/2 reading discipline
-- `inbox → spec → task` planning gate
-- `backlog → doing → done` task lifecycle
-- Session summaries with tags, hooks, and an append-only index
-- Task and session generators
-- `brain-lint` structural checks, wired into pre-commit and GitHub Actions
-- Templates for specs, knowledge nodes, research notes, and experiment records
+- Git-native question, experiment, evidence, and claim records
+- Human review gates for supported claims and meeting feedback
+- Redacted-by-default meeting capture with accept/reject/defer/validate states
+- Cross-agent task and session handoffs
+- Claude Code, Hermes, Codex CLI, Orca, Gemini, and Copilot entry points
+- Generators for tasks, sessions, experiments, and meetings
+- `research-lint` in pre-commit and GitHub Actions
+- A tested cross-agent demonstration fixture
 
 ## Not included
 
-- Personal calendar / idea management (`personal/` is a deliberate blank — see ADR-002)
-- External calendar or GitHub Issue sync
-- Multi-worktree auto-integration
-- Model routing, evaluation harnesses, or agent safety hooks
+- Personal schedules or personal idea management
+- Raw transcript, participant, or private dataset storage
+- Large artifact or model-weight storage
+- Experiment execution, model routing, or evaluation infrastructure
+- External calendar, issue tracker, or lab-system synchronization
+- Automatic truth or quality judgments by an AI
 
-These were left out on purpose. See `system/decisions.md` for the reasoning, and
-`tasks/backlog/` for the opt-in task to add them if you actually need them.
+These boundaries are intentional. `personal/` remains an empty compatibility point;
+research work and feedback provenance are the product.
 
-## Git hook
+## Platform compatibility
 
-Optional but recommended. Ask the agent to configure it once; it runs `brain-lint` before
-every commit. The command it will use is:
+The repository contract and installed CLI behavior have been checked for Claude Code,
+Hermes, Codex CLI, and Orca. This is structural compatibility, not a model-quality
+benchmark. See [`docs/platform-compatibility.md`](docs/platform-compatibility.md).
+
+## Validation
+
+Ask the agent to configure the local hook once:
 
 ```sh
 git config core.hooksPath infra/hooks
 ```
 
-Ask the agent to verify that it actually fires — a gate you believe in but that never runs
-is worse than no gate:
+Run the same checks manually with:
 
 ```sh
-git commit --allow-empty -m "hook check"   # should print "brain-lint: 클린 ✓"
+python infra/research-lint.py
+python -m unittest discover -s infra/tests -v
 ```
 
-GitHub Actions runs the same lint and the test suite on every push and PR, so CI catches it
-even if the local hook is missing.
+GitHub Actions runs both on pushes and pull requests.
 
-## Working with someone else
+## Upstream and license
 
-Each person can keep their own copy, or you can share one repo. If you share one, note that
-`system/sessions/index.md` is append-only and will conflict whenever two people close a
-session — `.gitattributes` already sets `merge=union` on it, which keeps both sides' lines.
-Task and session bodies are one-item-per-file, so they don't conflict.
-
-## Principles
-
-- Work that isn't written down doesn't exist for the next agent.
-- Read the tier you need, not the whole repo.
-- Don't implement an inbox item before it becomes a spec or a task.
-- Never commit real secrets, personal data, or large research artifacts to a public repo.
-
-## License
+Shared Brain Research was derived from
+[`shared-brain-lite`](https://github.com/realseungju/shared-brain-lite). The imported
+revision and owned-file boundary are recorded in [`UPSTREAM.md`](UPSTREAM.md).
 
 MIT — see [LICENSE](LICENSE).

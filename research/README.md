@@ -1,41 +1,80 @@
 # Research
 
-연구 문서와 실험 기록을 두는 곳이다. **Tier 2** — 시작 절차에서 읽지 않고, 필요할 때만 연다.
+프로젝트별 질문·실험·근거·주장을 관리한다. **Tier 2**이므로 시작 절차에서는 읽지 않고,
+현재 task나 session hook이 가리킬 때만 연다.
 
-## 구조
+## 프로젝트 구조
 
 ```text
 research/
+  _template/
   {project-slug}/
-    overview.md        무엇을·왜·현재 어디까지 (프로젝트마다 1개, 필수)
-    {topic}.md         방법·관련연구·실험 기록 등 주제별
+    overview.md
+    questions.md
+    claims.md
+    experiments/
+      EYYYY-MM-DD-{slug}.md
 ```
 
-`overview.md`는 짧게 유지하고, 길어지면 주제별 문서로 쪼갠 뒤 링크한다.
+새 프로젝트는 AI에게 초기화를 요청한다. AI는 `_template/`의 `overview.md`,
+`questions.md`, `claims.md`를 복사하고 `experiments/`를 만든 뒤 project slug와
+placeholder를 바꾼다.
 
-## 규칙
+## 증거 흐름
 
-1. **정본을 하나 정한다.** 결론과 최신 수치는 정본 문서 한 곳에만 둔다. 나머지는 링크한다.
-   같은 숫자가 두 문서에 있으면 둘 중 하나는 반드시 낡는다.
-2. **실행 로그와 결론을 분리한다.** "무엇을 돌렸나"와 "그래서 무엇이 참인가"는 다른 문서다.
-3. **주장에는 근거의 종류를 붙인다.** 측정 / 추정 / 미검정 중 무엇인지 적는다.
-   특히 "천장이다 · 한계다 · 무의미하다 · N점 우수하다"를 쓰기 전에는
-   경계값과 측정 방식을 먼저 확인한다. 지표가 포화된 것과 방법이 실패한 것은 다르다.
-4. **원시 데이터·모델 가중치·대용량 산출물은 Git에 넣지 않는다.** 어디에 있는지, 어떻게
-   재생성하는지만 적는다. 개인정보·API 키·피험자 데이터는 공개 저장소에 절대 넣지 않는다.
-5. **재현 정보를 남긴다.** 코드 커밋 해시, 라이브러리 버전 핀, 시드, 프롬프트 원문.
-   "그때 돌렸을 때는 됐다"는 6개월 뒤 아무 값어치가 없다.
+```text
+Q001 question
+→ H001 hypothesis
+→ EYYYY-MM-DD-slug experiment
+→ C001 claim candidate
+→ human review
+→ supported / rejected
+```
 
-## 템플릿
+- `overview.md`는 현재 상태와 정본 링크만 짧게 유지한다.
+- `questions.md`에는 질문, 중요성, 연결 가설, 답과 근거를 둔다.
+- `experiments/`에는 실행 전 가설·반증 조건과 실행 후 결과·해석·한계를 함께 둔다.
+- `claims.md`에는 결과로부터 검토할 주장만 둔다. 결과 파일이 곧 supported claim은 아니다.
+
+## 실험 규칙
+
+새 실험은 생성기로 만든다.
 
 ```sh
-mkdir -p research/my-project
-cp research/_template/overview.md research/my-project/overview.md
-cp research/_template/experiment.md research/my-project/exp-001-baseline.md
+python infra/new-experiment.py baseline \
+  --project my-project \
+  --title "Baseline" \
+  --hypothesis H001
 ```
 
-## Task·Session과의 관계
+`planned | running`은 열린 상태다. `completed | negative-result | invalidated`로 닫으려면:
 
-- `research/`는 **알아낸 것**을 쌓는다. `tasks/`는 **할 일**, `system/sessions/`는 **한 일**이다.
-- 실험을 돌리는 행위는 task, 그 결과 해석은 research 문서, 그날의 진행 요약은 session이다.
-- 프로젝트를 넘어 재사용되는 교훈은 `knowledge/`로 올린다.
+- `dataset_version`, `code_commit`, `seed_or_repeats`, `artifact`의 `TBD` 제거
+- `evidence_kind`를 `measured` 또는 `estimated`로 변경
+- 결과·해석·한계 작성
+- 결과와 해석 분리, 이 결과로 말할 수 없는 범위 명시
+
+원시 데이터·모델 가중치·대용량 산출물·비밀정보는 Git에 넣지 않는다. repo 밖 위치와
+재생성 방법만 기록한다.
+
+## Claim 규칙
+
+`supported`에는 다음 셋이 모두 필요하다.
+
+1. 같은 프로젝트에 실제로 존재하는 experiment 경로
+2. `evidence_kind: measured | estimated`
+3. `human_reviewed: yes`
+
+AI는 claim candidate를 작성하고 근거를 연결할 수 있지만 사람 대신 supported로 승인하지
+않는다. 정확한 frontmatter와 항목 스키마는 `system/conventions.md`를 따른다.
+
+## Task·Session·Feedback과의 관계
+
+- `tasks/`는 할 일, `research/`는 질문과 알아낸 것, `system/sessions/`는 인계 기록이다.
+- 실험 실행은 task, 실험 조건과 결과는 experiment, 사람 검토를 거친 결론은 claim이다.
+- 미팅 출처는 `feedback/meetings/`에 두고 accepted 항목이 실제 task·research 문서를
+  가리키게 한다.
+- 프로젝트를 넘어 재사용되는 교훈만 `knowledge/`로 올린다.
+
+완성된 예시는 `examples/research/demo-vision/`, 교차 AI 인계는
+`examples/cross-agent-demo/README.md`를 본다.

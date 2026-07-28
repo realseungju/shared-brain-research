@@ -1,6 +1,6 @@
-# RULES — Shared Brain Lite 운영 규칙
+# RULES — Shared Brain Research 운영 규칙
 
-**기록되지 않은 작업은 다음 에이전트가 알 수 없다.**
+**기록되지 않은 작업과 근거는 다음 에이전트에게 존재하지 않는다.**
 
 ## 시작 절차
 
@@ -35,6 +35,17 @@ inbox → planning/spec → tasks/backlog → tasks/doing → tasks/done
 필드 이름과 허용값은 `system/conventions.md`에 전부 적혀 있다. 채우지 않으면
 `brain-lint`가 거부하므로 추측하지 말고 표를 본다.
 
+연구 흐름:
+
+```text
+research question → hypothesis → experiment → evidence → claim/decision → next experiment
+```
+
+- 결과와 해석을 분리한다.
+- 실패·무효 실험도 삭제하지 않고 닫힌 상태로 기록한다.
+- supported claim은 실제 experiment 근거와 사람 검토가 필요하다.
+- 연구 파일은 Tier 2다. 활성 항목만 context나 task에서 가리킨다.
+
 ## 파일 생성
 
 task와 session 파일은 손으로 새로 만들지 않는다.
@@ -43,6 +54,9 @@ task와 session 파일은 손으로 새로 만들지 않는다.
 python infra/new-task.py {slug} --title "제목"
 python infra/new-session.py {slug} --agent {이름} --tags {태그} \
   --hook "index 한 줄 요약" --did "한 것" --next "다음"
+python infra/new-experiment.py {slug} --project {project} \
+  --title "실험 제목" --hypothesis {가설}
+python infra/new-meeting.py {slug} --title "미팅 제목" --project {project}
 ```
 
 생성 후 task 본문과 session 본문을 보강하는 것은 허용한다.
@@ -60,20 +74,33 @@ python infra/new-session.py {slug} --agent {이름} --tags {태그} \
 
 연구·실험 기록은 `research/{project-slug}/`에 둔다. 관례와 템플릿은 `research/README.md`.
 
-- 프로젝트마다 `overview.md` 하나를 두고, 나머지는 주제별로 쪼갠다.
+- 프로젝트마다 `overview.md`, `questions.md`, `claims.md`, `experiments/`를 둔다.
 - **정본 문서 하나를 지정**하고 결론은 거기에만 둔다. 실행 로그는 별도 문서다.
 - research는 Tier 2다. 시작 절차에서 읽지 않는다 — 필요할 때만 연다.
 - 원시 데이터·모델 가중치·비밀정보는 Git에 넣지 않는다. 위치만 적는다.
+- 정량 결과는 dataset/version, code commit, seed·반복, artifact, 근거 종류를 남긴다.
+- `python infra/research-lint.py`가 실험·claim·feedback 계약까지 검사한다.
 
-## 선택형 영역
+## 미팅 Feedback
 
-`personal/`은 기본 기능이 없는 확장 지점이다. 사용자가 실제 사용 사례를 요청하기
-전에는 파일 구조·자동화·데이터 포맷을 임의로 만들지 않는다.
+미팅 파일은 `feedback/meetings/`에 둔다. 상세 계약은 `feedback/README.md`.
+
+- 기본 `visibility`는 `redacted`다.
+- 발언은 사실이나 결정이 아니다. 인용·요약·AI 추론을 구분한다.
+- AI는 후보를 추출할 수 있지만 `accepted`로 승인할 수 없다.
+- 사람 승인과 연결 산출물이 있는 feedback만 accepted가 된다.
+- 구현 완료를 validated로 자동 바꾸지 않는다. 문제 해결 여부를 따로 확인한다.
+
+`personal/`은 상속 호환성을 위한 빈 확장점이며 이 배포판의 기능 범위가 아니다.
 
 ## 금지
 
 - Spec이나 완료 조건 없는 기능 구현
 - task/session 파일을 생성기 없이 새로 만들기
 - 검증하지 않은 결과를 완료로 기록
+- 미검증 claim을 `supported`로 기록
+- 사람 승인 없이 feedback을 `accepted` 또는 `validated`로 변경
+- 미팅 발언이나 AI 추론을 확정 결정으로 기록
 - 실제 개인정보·토큰·비밀정보를 공개 저장소에 기록
+- 원문 녹취·전사본을 공개 저장소에 기록
 - 대용량 데이터나 모델 파일을 Git에 직접 저장

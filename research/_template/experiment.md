@@ -1,32 +1,48 @@
 ---
-experiment: exp-001-slug
+id: EYYYY-MM-DD-slug
+title: 실험 제목
 project: project-slug
 date: YYYY-MM-DD
 status: planned
+hypothesis: H001
+evidence_kind: unverified
+dataset_version: TBD
+code_commit: TBD
+seed_or_repeats: TBD
+artifact: TBD
 ---
 
-# EXP-001 — 실험 이름
+# 실험 제목
 
-## 묻는 것
+## 연구 질문
 
 무엇이 참인지 알고 싶은가. 한 문장.
 
-## 가설과 반증 조건
+## 가설
 
-- 가설:
-- **이 결과가 나오면 가설이 틀린 것으로 본다:**
+- 연결 가설: `H001`
+- 예상:
+- **반증 조건:**
 
 반증 조건을 실행 전에 적는다. 결과를 본 뒤에 정하면 무엇이든 성공이 된다.
 
-## 설정
+## 계획
+
+- 비교 조건:
+- 주지표:
+- baseline:
+- 판단 기준:
+
+## 실행 조건
 
 | 항목 | 값 |
 |---|---|
-| 코드 커밋 |  |
-| 데이터 · 크기 |  |
+| 코드 커밋 | frontmatter `code_commit` |
+| 데이터·버전 | frontmatter `dataset_version` |
 | 모델 · 버전 핀 |  |
-| 시드 |  |
+| 시드·반복 | frontmatter `seed_or_repeats` |
 | 하드웨어 |  |
+| artifact | frontmatter `artifact` |
 
 재현에 필요한 것만. 재현이 안 되면 결과가 아니라 일화다.
 
@@ -41,11 +57,16 @@ status: planned
 
 ## 해석
 
-- 주장:
-- 근거 종류: 측정 / 추정 / 미검정
+- claim candidate:
+- 근거 종류: frontmatter `evidence_kind`
 - 지표의 상·하한과 이 값의 위치:
 - 이 결과로 **말할 수 없는 것**:
 
-## 다음
+## 한계
+
+- 미확인 교란:
+- 일반화할 수 없는 범위:
+
+## 다음 단계
 
 - [ ]
