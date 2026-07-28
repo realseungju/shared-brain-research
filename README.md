@@ -147,7 +147,8 @@ stubs pointing to it, so every supported platform gets the same startup contract
 - Git-native question, experiment, evidence, and claim records
 - Human-review provenance fields for supported claims and meeting feedback
 - A claim-validity checklist (`skills/experiment-claim-check`) for the layer lint cannot
-  reach: boundary-pinned sweeps, argmax-only readouts, untested deltas
+  reach: leakage, unequal tuning budgets, boundary-pinned sweeps, untested deltas —
+  operational failure modes plus standard checks sourced from the reproducibility literature
 - Redacted-by-default meeting capture with accept/reject/defer/validate states
 - Cross-agent task and session handoffs
 - Claude Code, Hermes, Codex CLI, Orca, Gemini, and Copilot entry points
