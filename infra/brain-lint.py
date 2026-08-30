@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared Brain 공통 코어의 최소 구조 불변식을 읽기 전용으로 검사한다."""
+"""Check the minimum structural invariants of the Shared Brain common core, read-only."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -58,19 +58,19 @@ def frontmatter(text: str) -> dict[str, str] | None:
 def check_required(root: Path) -> None:
     for name in REQUIRED_DIRS:
         if not (root / name).is_dir():
-            error(f"필수 디렉터리 없음: {name}")
+            error(f"required directory missing: {name}")
     for name in ("system/RULES.md", "system/context.md", "system/sessions/index.md"):
         if not (root / name).is_file():
-            error(f"필수 파일 없음: {name}")
+            error(f"required file missing: {name}")
 
 
 def check_entry_stubs(root: Path) -> None:
     for name in ENTRY_STUBS:
         path = root / name
         if not path.is_file():
-            error(f"진입점 없음: {name}")
+            error(f"entry point missing: {name}")
         elif "system/RULES.md" not in path.read_text(encoding="utf-8"):
-            error(f"진입점이 system/RULES.md를 가리키지 않음: {name}")
+            error(f"entry point does not point at system/RULES.md: {name}")
 
 
 def check_tasks(root: Path) -> None:
@@ -83,42 +83,42 @@ def check_tasks(root: Path) -> None:
             relative = path.relative_to(root).as_posix()
             match = TASK_FILE.fullmatch(path.name)
             if not match or not valid_date(match.group(1)):
-                error(f"task 파일명 형식 위반: {relative}")
+                error(f"invalid task filename format: {relative}")
                 continue
             task_id = path.stem
             if task_id in seen:
-                error(f"task id 중복: {task_id}")
+                error(f"duplicate task id: {task_id}")
             seen.add(task_id)
 
             text = path.read_text(encoding="utf-8")
             meta = frontmatter(text)
             if meta is None:
-                error(f"task frontmatter 없음: {relative}")
+                error(f"task frontmatter missing: {relative}")
                 continue
             for field in ("id", "title", "phase"):
                 if not meta.get(field):
-                    error(f"task 필수 필드 없음 '{field}': {relative}")
+                    error(f"task field missing '{field}': {relative}")
             if meta.get("id") and meta["id"] != task_id:
-                error(f"task id와 파일명 불일치: {relative}")
+                error(f"task id does not match filename: {relative}")
             if meta.get("phase") and meta["phase"] not in VALID_PHASES:
-                error(f"task phase 값 불량: {relative}")
+                error(f"invalid task phase value: {relative}")
 
             if state == "doing":
                 for field in ("agent", "started"):
                     if not meta.get(field):
-                        error(f"doing task 필드 없음 '{field}': {relative}")
+                        error(f"doing task field missing '{field}': {relative}")
                 if meta.get("started") and not valid_date(meta["started"]):
-                    error(f"doing task started 날짜 불량: {relative}")
+                    error(f"invalid doing task started date: {relative}")
 
             if state == "done":
                 for field in ("finished", "closed_reason", "result"):
                     if not meta.get(field):
-                        error(f"done task 필드 없음 '{field}': {relative}")
+                        error(f"done task field missing '{field}': {relative}")
                 if meta.get("finished") and not valid_date(meta["finished"]):
-                    error(f"done task finished 날짜 불량: {relative}")
+                    error(f"invalid done task finished date: {relative}")
                 reason = meta.get("closed_reason")
                 if reason and reason not in VALID_CLOSED_REASONS:
-                    error(f"done task closed_reason 값 불량: {relative}")
+                    error(f"invalid done task closed_reason value: {relative}")
 
 
 def check_sessions(root: Path) -> None:
@@ -135,30 +135,30 @@ def check_sessions(root: Path) -> None:
         relative = path.relative_to(root).as_posix()
         match = SESSION_FILE.fullmatch(path.name)
         if not match or not valid_date(match.group(1)):
-            error(f"session 파일명 형식 위반: {relative}")
+            error(f"invalid session filename format: {relative}")
             continue
         existing.add(path.name)
         text = path.read_text(encoding="utf-8")
         meta = frontmatter(text)
         if meta is None:
-            error(f"session frontmatter 없음: {relative}")
+            error(f"session frontmatter missing: {relative}")
             continue
         for field in ("date", "agent", "slug", "tags"):
             if not meta.get(field):
-                error(f"session 필수 필드 없음 '{field}': {relative}")
+                error(f"session field missing '{field}': {relative}")
         if meta.get("date") and meta["date"] != match.group(1):
-            error(f"session date와 파일명 불일치: {relative}")
+            error(f"session date does not match filename: {relative}")
         if meta.get("slug") and meta["slug"] != match.group(2):
-            error(f"session slug와 파일명 불일치: {relative}")
-        for section in ("한 것", "미완·다음"):
+            error(f"session slug does not match filename: {relative}")
+        for section in ("What was done", "Open and next"):
             if f"## {section}" not in text:
-                error(f"session 섹션 없음 '{section}': {relative}")
+                error(f"session section missing '{section}': {relative}")
         if f"]({path.name})" not in index_text:
-            error(f"session index 미등재: {relative}")
+            error(f"session not listed in index: {relative}")
 
     for linked in re.findall(r"\]\((\d{4}-\d{2}-\d{2}-[a-z0-9-]+\.md)\)", index_text):
         if linked not in existing:
-            error(f"session index가 없는 파일을 가리킴: {linked}")
+            error(f"session index points at a file that does not exist: {linked}")
 
 
 def main() -> int:
@@ -170,7 +170,7 @@ def main() -> int:
     ERRORS.clear()
     root = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent
     if not root.is_dir():
-        print(f"[FATAL] 저장소 루트 없음: {root}", file=sys.stderr)
+        print(f"[FATAL] repository root not found: {root}", file=sys.stderr)
         return 2
 
     check_required(root)
@@ -183,7 +183,7 @@ def main() -> int:
     if ERRORS:
         print(f"\nbrain-lint: ERROR {len(ERRORS)}")
         return 1
-    print("brain-lint: 클린 ✓")
+    print("brain-lint: clean ✓")
     return 0
 
 

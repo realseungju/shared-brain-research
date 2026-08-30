@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""연구 프로젝트에 date-slug experiment 파일을 생성한다."""
+"""Create a date-slug experiment file in a research project."""
 from __future__ import annotations
 
 import argparse
@@ -27,7 +27,7 @@ def valid_date(value: str) -> bool:
 def one_line(value: str, field: str) -> str:
     result = value.strip()
     if not result or "\n" in result or "\r" in result:
-        raise ValueError(f"{field}는 비어 있지 않은 한 줄이어야 함")
+        raise ValueError(f"{field} must be a single non-empty line")
     return result
 
 
@@ -38,27 +38,27 @@ def main() -> int:
     except (AttributeError, ValueError):
         pass
 
-    parser = argparse.ArgumentParser(description="Shared Brain Research experiment 생성")
-    parser.add_argument("slug", help="소문자 영문·숫자·하이픈")
+    parser = argparse.ArgumentParser(description="Create a Shared Brain Research experiment")
+    parser.add_argument("slug", help="lowercase letters, digits, and hyphens")
     parser.add_argument("--project", required=True, help="research/{project}/ slug")
     parser.add_argument("--title", required=True)
-    parser.add_argument("--hypothesis", required=True, help="연결 가설 ID 또는 한 줄 가설")
+    parser.add_argument("--hypothesis", required=True, help="linked hypothesis id, or the hypothesis in one line")
     parser.add_argument("--status", choices=VALID_STATUSES, default="planned")
     parser.add_argument("--dataset-version", default="TBD")
     parser.add_argument("--code-commit", default="TBD")
     parser.add_argument("--seed-or-repeats", default="TBD")
     parser.add_argument("--artifact", default="TBD")
     parser.add_argument("--date", dest="experiment_date", default=None, help="YYYY-MM-DD")
-    parser.add_argument("--root", default=None, help="저장소 루트")
+    parser.add_argument("--root", default=None, help="repository root")
     args = parser.parse_args()
 
     if not SLUG_RE.fullmatch(args.slug) or not SLUG_RE.fullmatch(args.project):
-        print("[ERROR] project와 slug는 소문자 영문·숫자·하이픈 형식이어야 함", file=sys.stderr)
+        print("[ERROR] project and slug must be lowercase letters, digits, and hyphens", file=sys.stderr)
         return 2
 
     experiment_date = args.experiment_date or date.today().isoformat()
     if not valid_date(experiment_date):
-        print(f"[ERROR] 날짜 형식 위반: {experiment_date}", file=sys.stderr)
+        print(f"[ERROR] invalid date format: {experiment_date}", file=sys.stderr)
         return 2
 
     try:
@@ -74,13 +74,13 @@ def main() -> int:
 
     root = Path(args.root).resolve() if args.root else repo_root()
     if not (root / "system" / "RULES.md").is_file():
-        print(f"[ERROR] Shared Brain Research 루트가 아님: {root}", file=sys.stderr)
+        print(f"[ERROR] not a Shared Brain Research root: {root}", file=sys.stderr)
         return 2
 
     project = root / "research" / args.project
     if not (project / "overview.md").is_file():
         print(
-            f"[ERROR] 연구 프로젝트 overview 없음: research/{args.project}/overview.md",
+            f"[ERROR] research project overview missing: research/{args.project}/overview.md",
             file=sys.stderr,
         )
         return 2
@@ -88,7 +88,7 @@ def main() -> int:
     experiment_id = f"E{experiment_date}-{args.slug}"
     destination = project / "experiments" / f"{experiment_id}.md"
     if destination.exists():
-        print(f"[ERROR] 이미 존재: {destination}", file=sys.stderr)
+        print(f"[ERROR] already exists: {destination}", file=sys.stderr)
         return 2
     destination.parent.mkdir(parents=True, exist_ok=True)
 
@@ -108,59 +108,59 @@ artifact: {artifact}
 
 # {title}
 
-## 연구 질문
+## Research question
 
 TODO
 
-## 가설
+## Hypothesis
 
-- 연결 가설: `{hypothesis}`
-- 예상:
-- **반증 조건:**
+- Linked hypothesis: `{hypothesis}`
+- Expectation:
+- **Falsified if:**
 
-## 계획
+## Plan
 
-- 비교 조건:
-- 주지표:
+- Comparison:
+- Primary metric:
 - baseline:
-- 판단 기준:
+- Decision rule:
 
-## 실행 조건
+## Run conditions
 
-| 항목 | 값 |
+| Field | Value |
 |---|---|
-| 코드 커밋 | `{code_commit}` |
-| 데이터·버전 | `{dataset_version}` |
-| 모델·버전 핀 |  |
-| 시드·반복 | `{seed_or_repeats}` |
-| 하드웨어 |  |
+| Code commit | `{code_commit}` |
+| Dataset and version | `{dataset_version}` |
+| Model and version pin |  |
+| Seeds and repeats | `{seed_or_repeats}` |
+| Hardware |  |
 | artifact | `{artifact}` |
 
-## 실행 로그
+## Run log
 
-- {experiment_date} — 생성
+- {experiment_date} - created
 
-## 결과
+## Results
 
 TODO
 
-## 해석
+## Interpretation
 
 - claim candidate:
-- 근거 종류: `unverified`
-- 이 결과로 말할 수 없는 것:
+- Evidence kind: `unverified`
+- What this result cannot say:
 
-## 한계
+## Limits
 
 - TODO
 
-## 다음 단계
+## Next
 
 - [ ]
 """
     destination.write_text(body, encoding="utf-8", newline="\n")
     relative = destination.relative_to(root).as_posix()
-    print(f"✓ experiment 생성: {relative}")
+    print(f"✓ experiment created: {relative}")
     return 0
 
 

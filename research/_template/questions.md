@@ -2,11 +2,11 @@
 
 ## Q001
 
-- question: 답하려는 질문
+- question: the question you are answering
 - status: open
-- rationale: 왜 중요한가
+- rationale: why it matters
 - linked_hypotheses: H001
 - answer:
 - evidence:
 
-허용 상태: `open | answered | dropped`.
+Allowed statuses: `open | answered | dropped`.

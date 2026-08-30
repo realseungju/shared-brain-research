@@ -1,34 +1,35 @@
 # Context
 
-> 모든 에이전트가 작업 전에 읽는 파일입니다. **이 파일을 실제 연구 상황으로 교체하세요.**
-> 항상 1페이지 이내로 유지합니다 — 길어지면 Tier 0 읽기 비용이 매 세션마다 늘어납니다.
-> 채워진 예시는 `examples/`를 보세요.
+> Every agent reads this before working. **Replace it with your real research situation.**
+> Keep it to one page — the longer it gets, the more every session pays at Tier 0.
+> For a filled-in example, see `examples/`.
 
-## 연구 목적
+## What this research is for
 
-(무엇을 밝히려는 연구인지 한두 문장. 운영 규칙 → `system/RULES.md`)
+(One or two sentences on what you are trying to find out. Operating rules →
+`system/RULES.md`)
 
-## 현재 연구 질문
+## Current research question
 
-- (지금 답하려는 질문)
+- (The question you are trying to answer right now)
 
-## 활성 프로젝트
+## Active projects
 
-| 프로젝트 | 활성 실험 | 다음 단계 | 정본 |
+| Project | Active experiment | Next step | Canonical doc |
 |---|---|---|---|
-|  | 없음 / `E...` |  | `research/{slug}/overview.md` |
+|  | none / `E...` |  | `research/{slug}/overview.md` |
 
-## 처리할 Feedback
+## Feedback to handle
 
-- 없음. accepted feedback만 `feedback/meetings/...#FB-...` 링크로 둡니다.
+- None. Link only accepted feedback, as `feedback/meetings/...#FB-...`.
 
-## 우선순위
+## Priorities
 
-1. 결과 품질
-2. 짧고 필요한 문서만 읽기
-3. 특정 AI 도구에 종속되지 않기
-4. 다음 에이전트가 이어받을 수 있게 기록하기
+1. Quality of the result
+2. Read only the documents you need, and keep them short
+3. Stay independent of any single AI tool
+4. Record enough for the next agent to continue
 
-## 열린 결정
+## Open decisions
 
-- (사람 판단이 필요한 결정 후보만)
+- (Only decision candidates that need a human)

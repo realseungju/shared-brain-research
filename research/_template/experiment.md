@@ -1,6 +1,6 @@
 ---
 id: EYYYY-MM-DD-slug
-title: 실험 제목
+title: Experiment title
 project: project-slug
 date: YYYY-MM-DD
 status: planned
@@ -12,63 +12,63 @@ seed_or_repeats: TBD
 artifact: TBD
 ---
 
-# 실험 제목
+# Experiment title
 
-## 연구 질문
+## Research question
 
-무엇이 참인지 알고 싶은가. 한 문장.
+What do you want to know is true? One sentence.
 
-## 가설
+## Hypothesis
 
-- 연결 가설: `H001`
-- 예상:
-- **반증 조건:**
+- Linked hypothesis: `H001`
+- Expectation:
+- **Falsified if:**
 
-반증 조건을 실행 전에 적는다. 결과를 본 뒤에 정하면 무엇이든 성공이 된다.
+Write the falsification condition before running. Decide it after seeing the result and everything is a success.
 
-## 계획
+## Plan
 
-- 비교 조건:
-- 주지표:
+- Comparison:
+- Primary metric:
 - baseline:
-- 판단 기준:
+- Decision rule:
 
-## 실행 조건
+## Run conditions
 
-| 항목 | 값 |
+| Field | Value |
 |---|---|
-| 코드 커밋 | frontmatter `code_commit` |
-| 데이터·버전 | frontmatter `dataset_version` |
-| 모델 · 버전 핀 |  |
-| 시드·반복 | frontmatter `seed_or_repeats` |
-| 하드웨어 |  |
+| Code commit | frontmatter `code_commit` |
+| Dataset and version | frontmatter `dataset_version` |
+| Model and version pin |  |
+| Seeds and repeats | frontmatter `seed_or_repeats` |
+| Hardware |  |
 | artifact | frontmatter `artifact` |
 
-재현에 필요한 것만. 재현이 안 되면 결과가 아니라 일화다.
+Only what reproduction needs. What cannot be reproduced is an anecdote, not a result.
 
-## 실행 로그
+## Run log
 
-- YYYY-MM-DD — 무엇을 돌렸고 무엇이 깨졌는지
+- YYYY-MM-DD - what was run, and what broke
 
-## 결과
+## Results
 
-TODO: 관측 결과 행을 추가한다.
+TODO: add the observed rows.
 
-| 조건 | 지표 | 값 | N |
+| Arm | Metric | Value | N |
 |---|---|---|---|
 
-## 해석
+## Interpretation
 
 - claim candidate: TODO
-- 근거 종류: TODO
-- 지표의 상·하한과 이 값의 위치: TODO
-- 이 결과로 **말할 수 없는 것**: TODO
+- Evidence kind: TODO
+- The metric's floor and ceiling, and where this value sits: TODO
+- What this result **cannot** say: TODO
 
-## 한계
+## Limits
 
-- 미확인 교란: TODO
-- 일반화할 수 없는 범위: TODO
+- Unchecked confounds: TODO
+- Where this does not generalise: TODO
 
-## 다음 단계
+## Next
 
 - [ ]

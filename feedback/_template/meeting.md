@@ -1,22 +1,22 @@
 ---
 date: YYYY-MM-DD
-title: 미팅 제목
+title: Meeting title
 project: project-slug
 visibility: redacted
 status: captured
 ---
 
-# 미팅 제목
+# Meeting title
 
-## 맥락
+## Context
 
-- 목적:
-- 참여 역할:
-- 원문 위치: repo 밖 경로 또는 `not-recorded`
+- Purpose:
+- Roles present:
+- Source location: a path outside the repo, or `not-recorded`
 
-## 출처 요약
+## Source summary
 
-개인정보와 비공개 내용을 제거한 요약. 원문 인용과 작성자 해석을 구분한다.
+A summary with personal and confidential content removed. Keep quotes apart from the writer's interpretation.
 
 ## Feedback
 
@@ -32,10 +32,10 @@ status: captured
 - reason:
 - validation:
 
-## 확정된 결정
+## Decisions
 
-없음. 확정된 결정만 `system/decisions.md` 링크와 함께 적는다.
+None. Record only settled decisions, each with a link into `system/decisions.md`.
 
-## 후속 링크
+## Follow-ups
 
-- 없음
+- none

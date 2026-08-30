@@ -24,7 +24,7 @@ class ResearchGeneratorTests(unittest.TestCase):
             "--project",
             "demo-project",
             "--title",
-            "첫 baseline",
+            "First baseline",
             "--hypothesis",
             "H001",
             "--date",
@@ -44,14 +44,14 @@ class ResearchGeneratorTests(unittest.TestCase):
             "--project",
             "missing-project",
             "--title",
-            "실패",
+            "Failure",
             "--hypothesis",
             "H001",
             "--root",
             str(self.root),
         )
         self.assertEqual(result.returncode, 2)
-        self.assertIn("overview 없음", result.stderr)
+        self.assertIn("research project overview missing", result.stderr)
 
     def test_new_experiment_rejects_bad_slug(self) -> None:
         result = run_script(
@@ -60,7 +60,7 @@ class ResearchGeneratorTests(unittest.TestCase):
             "--project",
             "demo-project",
             "--title",
-            "실패",
+            "Failure",
             "--hypothesis",
             "H001",
             "--root",
@@ -75,7 +75,7 @@ class ResearchGeneratorTests(unittest.TestCase):
             "--project",
             "demo-project",
             "--title",
-            "lint 통과",
+            "Lint check",
             "--hypothesis",
             "H001",
             "--date",
@@ -91,7 +91,7 @@ class ResearchGeneratorTests(unittest.TestCase):
             "new-meeting.py",
             "weekly-review",
             "--title",
-            "주간 리뷰",
+            "Weekly review",
             "--project",
             "demo-project",
             "--date",
@@ -108,7 +108,7 @@ class ResearchGeneratorTests(unittest.TestCase):
             "new-meeting.py",
             "lintable",
             "--title",
-            "lint 통과",
+            "Lint check",
             "--project",
             "demo-project",
             "--date",
@@ -125,7 +125,7 @@ class ResearchGeneratorTests(unittest.TestCase):
                 "new-meeting.py",
                 "duplicate",
                 "--title",
-                "중복",
+                "Duplicate",
                 "--project",
                 "demo-project",
                 "--date",
@@ -134,7 +134,7 @@ class ResearchGeneratorTests(unittest.TestCase):
                 str(self.root),
             )
         self.assertEqual(result.returncode, 2)
-        self.assertIn("이미 존재", result.stderr)
+        self.assertIn("already exists", result.stderr)
 
 
 if __name__ == "__main__":

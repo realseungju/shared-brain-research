@@ -1,6 +1,6 @@
 ---
 id: T2026-07-28-run-color-baseline
-title: 색상 분류 baseline 3시드 실행
+title: Run the colour-classification baseline over three seeds
 phase: validation
 assignee_role: research-agent
 spec: research/demo-vision/overview.md
@@ -11,20 +11,20 @@ closed_reason: completed
 result: research/demo-vision/experiments/E2026-07-28-color-baseline.md
 ---
 
-# 색상 분류 baseline 3시드 실행
+# Run the colour-classification baseline over three seeds
 
-## 할 일
+## To do
 
-- [x] dataset demo-v1 고정
-- [x] 3시드 실행
-- [x] 결과와 한계 분리 기록
-- [x] claim C001 사람 검토
+- [x] Pin dataset `demo-v1`
+- [x] Run three seeds
+- [x] Record results and limits separately
+- [x] Human review of claim C001
 
-## 완료 조건
+## Done when
 
-- 세 시드 결과와 artifact 위치가 experiment에 있다.
-- supported claim이 실제 experiment를 가리킨다.
+- The experiment holds all three seed results and the artifact location.
+- The `supported` claim points at a real experiment.
 
-## 진행 메모
+## Notes
 
-가상 예시다. 실제 모델·데이터·사람 정보는 포함하지 않는다.
+This is an invented example. It contains no real model, data, or personal information.

@@ -1,6 +1,6 @@
 ---
 id: E2026-07-28-color-baseline
-title: 색상 분류 baseline
+title: Colour-classification baseline
 project: demo-vision
 date: 2026-07-28
 status: completed
@@ -12,57 +12,57 @@ seed_or_repeats: seeds-1-3
 artifact: external/demo/color-baseline.json
 ---
 
-# 색상 분류 baseline
+# Colour-classification baseline
 
-## 연구 질문
+## Research question
 
-demo-v1에서 baseline이 무작위 기준보다 높은가?
+On `demo-v1`, does the baseline beat chance?
 
-## 가설
+## Hypothesis
 
-- 연결 가설: `H001`
-- 예상: Macro-F1 평균이 0.50보다 높다.
-- **반증 조건:** 3시드 평균이 0.50 이하이면 기각한다.
+- Linked hypothesis: `H001`
+- Expectation: mean Macro-F1 above 0.50.
+- **Falsified if:** the three-seed mean is 0.50 or below.
 
-## 계획
+## Plan
 
-- 비교 조건: 동일 설정, 시드 1·2·3
-- 주지표: Macro-F1
+- Comparison: identical settings, seeds 1, 2, 3
+- Primary metric: Macro-F1
 - baseline: 0.50
-- 판단 기준: 3시드 평균
+- Decision rule: mean of three seeds
 
-## 실행 조건
+## Run conditions
 
-| 항목 | 값 |
+| Field | Value |
 |---|---|
-| 코드 커밋 | `1a2b3c4` |
-| 데이터·버전 | `demo-v1` |
-| 모델·버전 핀 | `demo-classifier-1.0` |
-| 시드·반복 | `seeds-1-3` |
-| 하드웨어 | 가상 예시 |
+| Code commit | `1a2b3c4` |
+| Dataset and version | `demo-v1` |
+| Model and version pin | `demo-classifier-1.0` |
+| Seeds and repeats | `seeds-1-3` |
+| Hardware | invented example |
 | artifact | `external/demo/color-baseline.json` |
 
-## 실행 로그
+## Run log
 
-- 2026-07-28 — 가상 3시드 결과 기록
+- 2026-07-28 - recorded an invented three-seed result
 
-## 결과
+## Results
 
-| 조건 | 지표 | 값 | N |
+| Arm | Metric | Value | N |
 |---|---|---|---|
-| baseline | Macro-F1 | 0.81 평균 | 3 seeds |
+| baseline | Macro-F1 | 0.81 mean | 3 seeds |
 
-## 해석
+## Interpretation
 
 - claim candidate: C001
-- 근거 종류: `measured`
-- 이 결과로 말할 수 없는 것: demo-v1 밖의 일반화
+- Evidence kind: `measured`
+- What this result cannot say: anything beyond `demo-v1`
 
-## 한계
+## Limits
 
-- 가상 fixture라 실제 모델 성능을 나타내지 않는다.
-- 통계 검정을 수행하지 않았다.
+- An invented fixture. It does not represent real model performance.
+- No statistical test was run.
 
-## 다음 단계
+## Next
 
-- [ ] 다른 가상 분포에서 반복
+- [ ] Repeat on a different invented distribution

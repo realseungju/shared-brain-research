@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Session 요약 파일을 만들고 system/sessions/index.md에 등재한다."""
+"""Create a session summary file and register it in system/sessions/index.md."""
 from __future__ import annotations
 
 import argparse
@@ -12,8 +12,9 @@ SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 HOOK_MAX = 100
 INDEX_HEADER = """# Sessions Index
 
-최신 session이 아래에 추가된다. 시작할 때 꼬리 3~5줄만 읽고, 필요한 본문만 연다.
-생성은 `python infra/new-session.py`를 사용한다.
+The newest session is appended below. At the start of a session read only the last 3-5
+lines, then open just the bodies you need. Create entries with
+`python infra/new-session.py`.
 """
 
 
@@ -36,51 +37,51 @@ def main() -> int:
     except (AttributeError, ValueError):
         pass
 
-    parser = argparse.ArgumentParser(description="Shared Brain Research session 요약 생성")
+    parser = argparse.ArgumentParser(description="Create a Shared Brain Research session summary")
     parser.add_argument("slug")
     parser.add_argument("--agent", required=True)
-    parser.add_argument("--tags", required=True, help="쉼표 구분")
-    parser.add_argument("--hook", required=True, help=f"{HOOK_MAX}자 이내 index 요약")
-    parser.add_argument("--did", required=True, help="한 것")
-    parser.add_argument("--next", required=True, dest="next_", help="미완·다음")
-    parser.add_argument("--decisions", default="(없음)")
-    parser.add_argument("--caution", default="없음")
+    parser.add_argument("--tags", required=True, help="comma-separated")
+    parser.add_argument("--hook", required=True, help=f"index summary, at most {HOOK_MAX} characters")
+    parser.add_argument("--did", required=True, help="what was done")
+    parser.add_argument("--next", required=True, dest="next_", help="open items and what is next")
+    parser.add_argument("--decisions", default="(none)")
+    parser.add_argument("--caution", default="none")
     parser.add_argument("--date", dest="session_date", default=None, help="YYYY-MM-DD")
-    parser.add_argument("--root", default=None, help="저장소 루트")
+    parser.add_argument("--root", default=None, help="repository root")
     args = parser.parse_args()
 
     if not SLUG_RE.fullmatch(args.slug):
-        print(f"[ERROR] slug 형식 위반: {args.slug}", file=sys.stderr)
+        print(f"[ERROR] invalid slug format: {args.slug}", file=sys.stderr)
         return 2
 
     session_date = args.session_date or date.today().isoformat()
     if not valid_date(session_date):
-        print(f"[ERROR] 날짜 형식 위반: {session_date}", file=sys.stderr)
+        print(f"[ERROR] invalid date format: {session_date}", file=sys.stderr)
         return 2
 
     tags = [tag.strip() for tag in args.tags.split(",") if tag.strip()]
     if not tags or any(not SLUG_RE.fullmatch(tag) for tag in tags):
-        print("[ERROR] tags는 소문자 영문·숫자·하이픈 형식이어야 함", file=sys.stderr)
+        print("[ERROR] tags must be lowercase letters, digits, and hyphens", file=sys.stderr)
         return 2
 
     hook = " ".join(args.hook.split())
     if not hook or len(hook) > HOOK_MAX:
-        print(f"[ERROR] hook은 1~{HOOK_MAX}자여야 함", file=sys.stderr)
+        print(f"[ERROR] hook must be 1 to {HOOK_MAX} characters", file=sys.stderr)
         return 2
     if not args.agent.strip() or not args.did.strip() or not args.next_.strip():
-        print("[ERROR] agent, did, next는 비울 수 없음", file=sys.stderr)
+        print("[ERROR] agent, did, and next cannot be empty", file=sys.stderr)
         return 2
 
     root = Path(args.root).resolve() if args.root else repo_root()
     if not (root / "system" / "RULES.md").is_file():
-        print(f"[ERROR] Shared Brain Research 루트가 아님: {root}", file=sys.stderr)
+        print(f"[ERROR] not a Shared Brain Research root: {root}", file=sys.stderr)
         return 2
 
     sessions = root / "system" / "sessions"
     sessions.mkdir(parents=True, exist_ok=True)
     destination = sessions / f"{session_date}-{args.slug}.md"
     if destination.exists():
-        print(f"[ERROR] 이미 존재: {destination}", file=sys.stderr)
+        print(f"[ERROR] already exists: {destination}", file=sys.stderr)
         return 2
 
     body = f"""---
@@ -92,21 +93,21 @@ tags: [{", ".join(tags)}]
 
 # {session_date} — {args.agent.strip()} — {args.slug}
 
-## 한 것
+## What was done
 
 {args.did.strip()}
 
-## 결정·이유
+## Decisions and why
 
-{args.decisions.strip() or "(없음)"}
+{args.decisions.strip() or "(none)"}
 
-## 미완·다음
+## Open and next
 
 {args.next_.strip()}
 
-## 주의·함정
+## Cautions
 
-{args.caution.strip() or "없음"}
+{args.caution.strip() or "none"}
 """
     destination.write_text(body, encoding="utf-8", newline="\n")
 
@@ -118,7 +119,7 @@ tags: [{", ".join(tags)}]
         f"{args.agent.strip()} — {tag_text} — {hook}"
     )
     index.write_text(current.rstrip() + "\n" + line + "\n", encoding="utf-8", newline="\n")
-    print(f"✓ session 생성: system/sessions/{destination.name} (+index)")
+    print(f"✓ session created: system/sessions/{destination.name} (+index)")
     return 0
 
 

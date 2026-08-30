@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""공통 brain 불변식과 연구·미팅 provenance 계약을 검사한다."""
+"""Check the common brain invariants plus the research and meeting provenance contract."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -26,7 +26,7 @@ FEEDBACK_KINDS = {"request", "problem", "observation", "question", "decision-can
 SOURCE_MODES = {"quote", "paraphrase", "inference"}
 FEEDBACK_STATUSES = {"captured", "accepted", "rejected", "deferred", "validated"}
 CLAIM_STATUSES = {"candidate", "supported", "rejected"}
-PLACEHOLDERS = {"", "-", "todo", "tbd", "pending", "none", "n/a", "미검증"}
+PLACEHOLDERS = {"", "-", "todo", "tbd", "pending", "none", "n/a", "not-verified"}
 COMMIT_REF = re.compile(r"^(?:[0-9a-f]{7,40}|not-applicable)$")
 
 
@@ -160,7 +160,7 @@ def check_required(root: Path) -> None:
         "research/_template",
     ):
         if not (root / name).is_dir():
-            error(f"research 필수 디렉터리 없음: {name}")
+            error(f"required research directory missing: {name}")
     for name in (
         "feedback/README.md",
         "feedback/_template/meeting.md",
@@ -171,21 +171,21 @@ def check_required(root: Path) -> None:
         "UPSTREAM.md",
     ):
         if not (root / name).is_file():
-            error(f"research 필수 파일 없음: {name}")
+            error(f"required research file missing: {name}")
 
 
 def check_experiment(root: Path, project_slug: str, path: Path) -> None:
     relative = path.relative_to(root).as_posix()
     match = EXPERIMENT_FILE.fullmatch(path.name)
     if not match or not valid_date(match.group(1)):
-        error(f"experiment 파일명 형식 위반: {relative}")
+        error(f"invalid experiment filename format: {relative}")
         return
 
     experiment_id = path.stem
     text = path.read_text(encoding="utf-8")
     meta = frontmatter(text)
     if meta is None:
-        error(f"experiment frontmatter 없음: {relative}")
+        error(f"experiment frontmatter missing: {relative}")
         return
 
     required = (
@@ -203,22 +203,22 @@ def check_experiment(root: Path, project_slug: str, path: Path) -> None:
     )
     for field in required:
         if not meta.get(field):
-            error(f"experiment 필수 필드 없음 '{field}': {relative}")
+            error(f"experiment field missing '{field}': {relative}")
 
     if meta.get("id") != experiment_id:
-        error(f"experiment id와 파일명 불일치: {relative}")
+        error(f"experiment id does not match filename: {relative}")
     if meta.get("project") != project_slug:
-        error(f"experiment project와 디렉터리 불일치: {relative}")
+        error(f"experiment project does not match its directory: {relative}")
     if meta.get("date") != match.group(1):
-        error(f"experiment date와 파일명 불일치: {relative}")
+        error(f"experiment date does not match filename: {relative}")
     if meta.get("status") and meta["status"] not in EXPERIMENT_STATUSES:
-        error(f"experiment status 값 불량: {relative}")
+        error(f"invalid experiment status value: {relative}")
     if meta.get("evidence_kind") and meta["evidence_kind"] not in EVIDENCE_KINDS:
-        error(f"experiment evidence_kind 값 불량: {relative}")
+        error(f"invalid experiment evidence_kind value: {relative}")
 
-    for section in ("연구 질문", "가설", "계획", "실행 조건", "결과", "해석", "한계", "다음 단계"):
+    for section in ("Research question", "Hypothesis", "Plan", "Run conditions", "Results", "Interpretation", "Limits", "Next"):
         if f"## {section}" not in text:
-            error(f"experiment 섹션 없음 '{section}': {relative}")
+            error(f"experiment section missing '{section}': {relative}")
 
     if meta.get("status") in CLOSED_EXPERIMENT_STATUSES:
         for field in (
@@ -229,14 +229,14 @@ def check_experiment(root: Path, project_slug: str, path: Path) -> None:
             "artifact",
         ):
             if is_placeholder(meta.get(field, "")):
-                error(f"닫힌 experiment 재현 필드 미완 '{field}': {relative}")
+                error(f"closed experiment is missing a reproducibility field '{field}': {relative}")
         if meta.get("evidence_kind") == "unverified":
-            error(f"닫힌 experiment evidence_kind가 unverified: {relative}")
+            error(f"closed experiment still has evidence_kind unverified: {relative}")
         if not COMMIT_REF.fullmatch(meta.get("code_commit", "")):
-            error(f"닫힌 experiment code_commit 형식 불량: {relative}")
-        for section in ("결과", "해석", "한계"):
+            error(f"invalid code_commit in closed experiment: {relative}")
+        for section in ("Results", "Interpretation", "Limits"):
             if not section_has_content(text, section):
-                error(f"닫힌 experiment 내용 없음 '{section}': {relative}")
+                error(f"closed experiment section is empty '{section}': {relative}")
 
 
 def check_claims(root: Path, project_slug: str, path: Path) -> None:
@@ -253,49 +253,49 @@ def check_claims(root: Path, project_slug: str, path: Path) -> None:
     for match in matches:
         claim_id, block = match.group(1), match.group(2)
         if not CLAIM_ID.fullmatch(claim_id) or claim_id in seen:
-            error(f"claim id 불량 또는 중복 '{claim_id}': {relative}")
+            error(f"invalid or duplicate claim id '{claim_id}': {relative}")
         seen.add(claim_id)
         fields = record_fields(block)
         for field in ("statement", "status", "evidence", "evidence_kind", "human_reviewed"):
             if not fields.get(field):
-                error(f"claim 필수 필드 없음 '{field}' ({claim_id}): {relative}")
+                error(f"claim field missing '{field}' ({claim_id}): {relative}")
 
         status = fields.get("status", "")
         evidence_kind = fields.get("evidence_kind", "")
         reviewed = fields.get("human_reviewed", "")
         if status and status not in CLAIM_STATUSES:
-            error(f"claim status 값 불량 ({claim_id}): {relative}")
+            error(f"invalid claim status value ({claim_id}): {relative}")
         if evidence_kind and evidence_kind not in EVIDENCE_KINDS:
-            error(f"claim evidence_kind 값 불량 ({claim_id}): {relative}")
+            error(f"invalid claim evidence_kind value ({claim_id}): {relative}")
         if reviewed and reviewed not in {"yes", "no"}:
-            error(f"claim human_reviewed 값 불량 ({claim_id}): {relative}")
+            error(f"invalid claim human_reviewed value ({claim_id}): {relative}")
 
         if status == "supported":
             if is_placeholder(fields.get("statement", "")):
-                error(f"supported claim statement 없음 ({claim_id}): {relative}")
+                error(f"supported claim has no statement ({claim_id}): {relative}")
             if reviewed != "yes":
-                error(f"supported claim 사람 검토 없음 ({claim_id}): {relative}")
+                error(f"supported claim has no human review ({claim_id}): {relative}")
             if evidence_kind not in {"measured", "estimated"}:
-                error(f"supported claim 근거가 unverified ({claim_id}): {relative}")
+                error(f"supported claim rests on unverified evidence ({claim_id}): {relative}")
             evidence = linked_path(root, fields.get("evidence", ""))
             if evidence is None or not evidence.is_file():
-                error(f"supported claim 근거 경로 없음 ({claim_id}): {relative}")
+                error(f"supported claim has no evidence path ({claim_id}): {relative}")
             else:
                 expected = (root / "research" / project_slug / "experiments").resolve()
                 try:
                     evidence.resolve().relative_to(expected)
                 except ValueError:
-                    error(f"supported claim 근거가 project experiment 밖임 ({claim_id}): {relative}")
+                    error(f"supported claim points outside the project experiments ({claim_id}): {relative}")
         if status == "rejected":
             if is_placeholder(fields.get("statement", "")):
-                error(f"rejected claim statement 없음 ({claim_id}): {relative}")
+                error(f"rejected claim has no statement ({claim_id}): {relative}")
             if reviewed != "yes":
-                error(f"rejected claim 사람 검토 없음 ({claim_id}): {relative}")
+                error(f"rejected claim has no human review ({claim_id}): {relative}")
             if is_placeholder(fields.get("reason", "")):
-                error(f"rejected claim 이유 없음 ({claim_id}): {relative}")
+                error(f"rejected claim has no reason ({claim_id}): {relative}")
 
     if not matches:
-        error(f"claim 항목 없음: {relative}")
+        error(f"no claim entries: {relative}")
 
 
 def check_research_projects(root: Path) -> None:
@@ -306,15 +306,15 @@ def check_research_projects(root: Path) -> None:
         if not project.is_dir() or project.name.startswith("_"):
             continue
         if not re.fullmatch(SLUG, project.name):
-            error(f"research project slug 형식 위반: {project.relative_to(root).as_posix()}")
+            error(f"invalid research project slug: {project.relative_to(root).as_posix()}")
             continue
         for name in ("overview.md", "questions.md", "claims.md", "experiments"):
             target = project / name
             if name == "experiments":
                 if not target.is_dir():
-                    error(f"research project 필수 디렉터리 없음: {target.relative_to(root).as_posix()}")
+                    error(f"required research project directory missing: {target.relative_to(root).as_posix()}")
             elif not target.is_file():
-                error(f"research project 필수 파일 없음: {target.relative_to(root).as_posix()}")
+                error(f"required research project file missing: {target.relative_to(root).as_posix()}")
         if (project / "claims.md").is_file():
             check_claims(root, project.name, project / "claims.md")
         experiments = project / "experiments"
@@ -327,27 +327,27 @@ def check_meeting(root: Path, path: Path) -> None:
     relative = path.relative_to(root).as_posix()
     match = MEETING_FILE.fullmatch(path.name)
     if not match or not valid_date(match.group(1)):
-        error(f"meeting 파일명 형식 위반: {relative}")
+        error(f"invalid meeting filename format: {relative}")
         return
 
     meeting_date = match.group(1)
     text = path.read_text(encoding="utf-8")
     meta = frontmatter(text)
     if meta is None:
-        error(f"meeting frontmatter 없음: {relative}")
+        error(f"meeting frontmatter missing: {relative}")
         return
     for field in ("date", "title", "project", "visibility", "status"):
         if not meta.get(field):
-            error(f"meeting 필수 필드 없음 '{field}': {relative}")
+            error(f"meeting field missing '{field}': {relative}")
     if meta.get("date") != meeting_date:
-        error(f"meeting date와 파일명 불일치: {relative}")
+        error(f"meeting date does not match filename: {relative}")
     if meta.get("visibility") and meta["visibility"] not in MEETING_VISIBILITY:
-        error(f"meeting visibility 값 불량: {relative}")
+        error(f"invalid meeting visibility value: {relative}")
     if meta.get("status") and meta["status"] not in MEETING_STATUSES:
-        error(f"meeting status 값 불량: {relative}")
-    for section in ("맥락", "출처 요약", "Feedback", "확정된 결정", "후속 링크"):
+        error(f"invalid meeting status value: {relative}")
+    for section in ("Context", "Source summary", "Feedback", "Decisions", "Follow-ups"):
         if f"## {section}" not in text:
-            error(f"meeting 섹션 없음 '{section}': {relative}")
+            error(f"meeting section missing '{section}': {relative}")
 
     matches = list(
         re.finditer(
@@ -357,7 +357,7 @@ def check_meeting(root: Path, path: Path) -> None:
         )
     )
     if not matches:
-        error(f"meeting feedback 항목 없음: {relative}")
+        error(f"meeting has no feedback entries: {relative}")
         return
 
     seen: set[str] = set()
@@ -366,7 +366,7 @@ def check_meeting(root: Path, path: Path) -> None:
         feedback_id, block = item.group(1), item.group(2)
         id_match = FEEDBACK_ID.fullmatch(feedback_id)
         if not id_match or id_match.group(1) != meeting_date or feedback_id in seen:
-            error(f"feedback id 불량 또는 중복 '{feedback_id}': {relative}")
+            error(f"invalid or duplicate feedback id '{feedback_id}': {relative}")
         seen.add(feedback_id)
         fields = record_fields(block)
         for field in (
@@ -378,14 +378,14 @@ def check_meeting(root: Path, path: Path) -> None:
             "human_approved",
         ):
             if not fields.get(field):
-                error(f"feedback 필수 필드 없음 '{field}' ({feedback_id}): {relative}")
+                error(f"feedback field missing '{field}' ({feedback_id}): {relative}")
         for field in (
             "linked_artifact",
             "reason",
             "validation",
         ):
             if field not in fields:
-                error(f"feedback 필수 필드 없음 '{field}' ({feedback_id}): {relative}")
+                error(f"feedback field missing '{field}' ({feedback_id}): {relative}")
 
         scope = fields.get("scope", "")
         kind = fields.get("kind", "")
@@ -394,38 +394,38 @@ def check_meeting(root: Path, path: Path) -> None:
         approved = fields.get("human_approved", "")
         final_statuses.append(status)
         if scope and scope not in FEEDBACK_SCOPES:
-            error(f"feedback scope 값 불량 ({feedback_id}): {relative}")
+            error(f"invalid feedback scope value ({feedback_id}): {relative}")
         if kind and kind not in FEEDBACK_KINDS:
-            error(f"feedback kind 값 불량 ({feedback_id}): {relative}")
+            error(f"invalid feedback kind value ({feedback_id}): {relative}")
         if source_mode and source_mode not in SOURCE_MODES:
-            error(f"feedback source_mode 값 불량 ({feedback_id}): {relative}")
+            error(f"invalid feedback source_mode value ({feedback_id}): {relative}")
         if status and status not in FEEDBACK_STATUSES:
-            error(f"feedback status 값 불량 ({feedback_id}): {relative}")
+            error(f"invalid feedback status value ({feedback_id}): {relative}")
         if approved and approved not in {"yes", "no"}:
-            error(f"feedback human_approved 값 불량 ({feedback_id}): {relative}")
+            error(f"invalid feedback human_approved value ({feedback_id}): {relative}")
 
         if status == "captured" and approved == "yes":
-            error(f"captured feedback가 승인 상태임 ({feedback_id}): {relative}")
+            error(f"captured feedback is marked approved ({feedback_id}): {relative}")
         if status != "captured" and approved != "yes":
-            error(f"triage된 feedback 사람 승인 없음 ({feedback_id}): {relative}")
+            error(f"triaged feedback has no human approval ({feedback_id}): {relative}")
         if status != "captured" and is_placeholder(fields.get("statement", "")):
-            error(f"triage된 feedback statement 없음 ({feedback_id}): {relative}")
+            error(f"triaged feedback has no statement ({feedback_id}): {relative}")
         if status in {"accepted", "validated"}:
             artifact = linked_path(root, fields.get("linked_artifact", ""))
             if artifact is None or not artifact.is_file():
-                error(f"accepted feedback 연결 산출물 없음 ({feedback_id}): {relative}")
+                error(f"accepted feedback links to no artifact ({feedback_id}): {relative}")
         if kind == "decision-candidate" and status in {"accepted", "validated"}:
             if not fields.get("linked_artifact", "").startswith("system/decisions.md"):
-                error(f"승인된 decision-candidate가 ADR을 가리키지 않음 ({feedback_id}): {relative}")
+                error(f"approved decision-candidate does not point at an ADR ({feedback_id}): {relative}")
         if status in {"rejected", "deferred"} and is_placeholder(fields.get("reason", "")):
-            error(f"{status} feedback 이유 없음 ({feedback_id}): {relative}")
+            error(f"{status} feedback has no reason ({feedback_id}): {relative}")
         if status == "validated" and is_placeholder(fields.get("validation", "")):
-            error(f"validated feedback 검증 결과 없음 ({feedback_id}): {relative}")
+            error(f"validated feedback has no validation result ({feedback_id}): {relative}")
 
     if meta.get("status") == "closed":
         unfinished = {"captured", "accepted", "deferred"}.intersection(final_statuses)
         if unfinished:
-            error(f"closed meeting에 미종결 feedback 존재 {sorted(unfinished)}: {relative}")
+            error(f"closed meeting still has unfinished feedback {sorted(unfinished)}: {relative}")
 
 
 def check_meetings(root: Path) -> None:
@@ -445,7 +445,7 @@ def main() -> int:
 
     root = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent
     if not root.is_dir():
-        print(f"[FATAL] 저장소 루트 없음: {root}", file=sys.stderr)
+        print(f"[FATAL] repository root not found: {root}", file=sys.stderr)
         return 2
     if run_core_lint(root) != 0:
         return 1
@@ -459,7 +459,7 @@ def main() -> int:
     if ERRORS:
         print(f"\nresearch-lint: ERROR {len(ERRORS)}")
         return 1
-    print("research-lint: 클린 ✓")
+    print("research-lint: clean ✓")
     return 0
 
 

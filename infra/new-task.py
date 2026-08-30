@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""tasks/backlog에 date-slug task 파일을 생성한다."""
+"""Create a date-slug task file in tasks/backlog."""
 from __future__ import annotations
 
 import argparse
@@ -31,31 +31,31 @@ def main() -> int:
     except (AttributeError, ValueError):
         pass
 
-    parser = argparse.ArgumentParser(description="Shared Brain Research task 생성")
-    parser.add_argument("slug", help="소문자 영문·숫자·하이픈")
-    parser.add_argument("--title", required=True, help="task 제목")
+    parser = argparse.ArgumentParser(description="Create a Shared Brain Research task")
+    parser.add_argument("slug", help="lowercase letters, digits, and hyphens")
+    parser.add_argument("--title", required=True, help="task title")
     parser.add_argument("--phase", choices=VALID_PHASES, default="planning")
     parser.add_argument("--assignee", default="maintainer / agent")
     parser.add_argument("--spec", default="none")
     parser.add_argument("--date", dest="task_date", default=None, help="YYYY-MM-DD")
-    parser.add_argument("--root", default=None, help="저장소 루트")
+    parser.add_argument("--root", default=None, help="repository root")
     args = parser.parse_args()
 
     if not SLUG_RE.fullmatch(args.slug):
-        print(f"[ERROR] slug 형식 위반: {args.slug}", file=sys.stderr)
+        print(f"[ERROR] invalid slug format: {args.slug}", file=sys.stderr)
         return 2
     if not args.title.strip():
-        print("[ERROR] title이 비어 있음", file=sys.stderr)
+        print("[ERROR] title is empty", file=sys.stderr)
         return 2
 
     task_date = args.task_date or date.today().isoformat()
     if not valid_date(task_date):
-        print(f"[ERROR] 날짜 형식 위반: {task_date}", file=sys.stderr)
+        print(f"[ERROR] invalid date format: {task_date}", file=sys.stderr)
         return 2
 
     root = Path(args.root).resolve() if args.root else repo_root()
     if not (root / "system" / "RULES.md").is_file():
-        print(f"[ERROR] Shared Brain Research 루트가 아님: {root}", file=sys.stderr)
+        print(f"[ERROR] not a Shared Brain Research root: {root}", file=sys.stderr)
         return 2
     backlog = root / "tasks" / "backlog"
     backlog.mkdir(parents=True, exist_ok=True)
@@ -63,7 +63,7 @@ def main() -> int:
     task_id = f"T{task_date}-{args.slug}"
     destination = backlog / f"{task_id}.md"
     if destination.exists():
-        print(f"[ERROR] 이미 존재: {destination}", file=sys.stderr)
+        print(f"[ERROR] already exists: {destination}", file=sys.stderr)
         return 2
 
     body = f"""---
@@ -81,20 +81,20 @@ result:
 
 # {args.title.strip()}
 
-## 할 일
+## To do
 
 - [ ]
 
-## 완료 조건
+## Done when
 
 -
 
-## 진행 메모
+## Notes
 
 -
 """
     destination.write_text(body, encoding="utf-8", newline="\n")
-    print(f"✓ task 생성: tasks/backlog/{destination.name}")
+    print(f"✓ task created: tasks/backlog/{destination.name}")
     return 0
 
 

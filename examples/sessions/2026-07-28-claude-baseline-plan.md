@@ -7,20 +7,21 @@ tags: [demo-vision,experiment,claude-code]
 
 # 2026-07-28 — Claude Code — claude-baseline-plan
 
-## 한 것
+## What was done
 
-Tier 0을 읽고 Q001·H001을 정리했다. `E2026-07-28-color-baseline`의 반증 조건,
-dataset version, 주지표와 3시드 계획을 작성했다.
+Read Tier 0 and wrote up Q001 and H001. Drafted `E2026-07-28-color-baseline` with its
+falsification condition, dataset version, primary metric, and a three-seed plan.
 
-## 결정·이유
+## Decisions and why
 
-단일 시드 최고값 대신 3시드 평균을 기록한다. 첫 결과를 일반화하지 않기 위해 claim은
-candidate로 유지한다.
+Record the mean of three seeds rather than the best single seed. Keep the claim at
+`candidate` so a first result does not get generalised.
 
-## 미완·다음
+## Open and next
 
-Hermes가 `tasks/doing/T2026-07-28-run-color-baseline.md`와 experiment 계획을 읽고 실행한다.
+Hermes reads `tasks/doing/T2026-07-28-run-color-baseline.md` and the experiment plan, then
+runs it.
 
-## 주의·함정
+## Cautions
 
-이 session은 실행 결과를 주장하지 않는다. 계획과 반증 조건만 확정했다.
+This session claims no results. It only fixed the plan and the falsification condition.

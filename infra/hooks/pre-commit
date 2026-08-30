@@ -1,9 +1,9 @@
 #!/bin/sh
-# commit 전 구조 검사. 설치: git config core.hooksPath infra/hooks
+# Structural check before a commit. Install: git config core.hooksPath infra/hooks
 set -eu
 
-# 후보를 "존재하는가"가 아니라 "실제로 실행되는가"로 고른다.
-# Windows 의 python3 는 Microsoft Store 설치 유도 스텁일 수 있고, 그건 존재하지만 돌지 않는다.
+# Pick a candidate by whether it actually runs, not by whether it exists.
+# On Windows, python3 may be the Microsoft Store install stub: it exists but does not run.
 PY=""
 for candidate in python3 python py; do
   if command -v "$candidate" >/dev/null 2>&1 &&
@@ -14,8 +14,8 @@ for candidate in python3 python py; do
 done
 
 if [ -z "$PY" ]; then
-  echo "pre-commit: 실행 가능한 Python 을 찾지 못했다 (python3/python/py 모두 실패)." >&2
-  echo "  Python 3.10+ 를 설치하라. --no-verify 로 넘기지 마라 — 게이트가 없는 것과 같다." >&2
+  echo "pre-commit: found no runnable Python (python3, python, and py all failed)." >&2
+  echo "  Install Python 3.10+. Do not skip with --no-verify - that is the same as having no gate." >&2
   exit 1
 fi
 

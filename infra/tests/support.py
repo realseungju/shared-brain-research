@@ -34,32 +34,35 @@ def make_brain(root: Path) -> None:
     write(root / "system/sessions/index.md", "# Sessions Index\n")
     write(root / "tasks/README.md", "# Tasks\n")
     for stub in ("AGENTS.md", "CLAUDE.md", "GEMINI.md", ".github/copilot-instructions.md"):
-        write(root / stub, "먼저 system/RULES.md를 읽는다.\n")
-    write(root / "feedback/README.md", "# Feedback\n")
-    write(root / "feedback/_template/meeting.md", "# Meeting template\n")
+        write(root / stub, "Read system/RULES.md first.\n")
+
+    write(root / "feedback/README.md", "# Feedback" + chr(10))
+    write(root / "feedback/_template/meeting.md", "# Meeting template" + chr(10))
     for name in ("overview.md", "questions.md", "claims.md", "experiment.md"):
-        write(root / "research/_template" / name, f"# {name}\n")
-    write(root / "UPSTREAM.md", "# Upstream\n")
+        write(root / "research/_template" / name, "# " + name + chr(10))
+    write(root / "UPSTREAM.md", "# Upstream" + chr(10))
 
 
 def make_research_project(root: Path, slug: str = "demo-project") -> Path:
     project = root / "research" / slug
     (project / "experiments").mkdir(parents=True, exist_ok=True)
-    write(project / "overview.md", f"# Overview — {slug}\n")
-    write(project / "questions.md", "# Questions\n")
+    write(project / "overview.md", "# Overview - " + slug + chr(10))
+    write(project / "questions.md", "# Questions" + chr(10))
     write(
         project / "claims.md",
-        """# Claims
-
-## C001
-
-- statement: baseline보다 나아지는가
-- status: candidate
-- evidence: TBD
-- evidence_kind: unverified
-- human_reviewed: no
-- reason:
-""",
+        chr(10).join([
+            "# Claims",
+            "",
+            "## C001",
+            "",
+            "- statement: does it beat the baseline",
+            "- status: candidate",
+            "- evidence: TBD",
+            "- evidence_kind: unverified",
+            "- human_reviewed: no",
+            "- reason:",
+            "",
+        ]),
     )
     return project
 

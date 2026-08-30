@@ -21,7 +21,7 @@ class GeneratorTests(unittest.TestCase):
             "new-task.py",
             "first-task",
             "--title",
-            "첫 작업",
+            "First task",
             "--date",
             "2026-07-28",
             "--root",
@@ -30,14 +30,14 @@ class GeneratorTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         path = self.root / "tasks/backlog/T2026-07-28-first-task.md"
         self.assertTrue(path.is_file())
-        self.assertIn("title: 첫 작업", path.read_text(encoding="utf-8"))
+        self.assertIn("title: First task", path.read_text(encoding="utf-8"))
 
     def test_new_task_rejects_invalid_slug(self) -> None:
         result = run_script(
             "new-task.py",
             "Bad Slug",
             "--title",
-            "실패",
+            "Failure",
             "--root",
             str(self.root),
         )
@@ -49,21 +49,21 @@ class GeneratorTests(unittest.TestCase):
                 "new-task.py",
                 "dup-task",
                 "--title",
-                "중복",
+                "Duplicate",
                 "--date",
                 "2026-07-28",
                 "--root",
                 str(self.root),
             )
         self.assertEqual(result.returncode, 2)
-        self.assertIn("이미 존재", result.stderr)
+        self.assertIn("already exists", result.stderr)
 
     def test_new_task_output_passes_lint(self) -> None:
         run_script(
             "new-task.py",
             "lintable",
             "--title",
-            "린트 통과",
+            "Lint check",
             "--date",
             "2026-07-28",
             "--root",
@@ -81,7 +81,7 @@ class GeneratorTests(unittest.TestCase):
             "--tags",
             "demo",
             "--hook",
-            "가" * 101,
+            "a" * 101,
             "--did",
             "d",
             "--next",
@@ -100,7 +100,7 @@ class GeneratorTests(unittest.TestCase):
             "--tags",
             "Demo Tag",
             "--hook",
-            "훅",
+            "hook",
             "--did",
             "d",
             "--next",
@@ -119,11 +119,11 @@ class GeneratorTests(unittest.TestCase):
             "--tags",
             "demo",
             "--hook",
-            "린트 통과 확인",
+            "Lint passes",
             "--did",
-            "생성기 검증",
+            "Generator check",
             "--next",
-            "없음",
+            "None",
             "--date",
             "2026-07-28",
             "--root",
@@ -141,11 +141,11 @@ class GeneratorTests(unittest.TestCase):
             "--tags",
             "demo,lite",
             "--hook",
-            "첫 session",
+            "First session",
             "--did",
-            "생성기 검증",
+            "Generator check",
             "--next",
-            "다음 작업",
+            "Next task",
             "--date",
             "2026-07-28",
             "--root",

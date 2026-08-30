@@ -7,41 +7,43 @@ updated: 2026-07-28
 
 # Demo Vision
 
-## 한 줄 요약
+## In one line
 
-가상 색상 분류 baseline으로 연구 provenance와 교차 AI 인계를 보여준다.
+An invented colour-classification baseline, used to show research provenance and a
+cross-agent handoff.
 
-## 연구 질문
+## Research question
 
-고정된 demo-v1에서 baseline이 무작위 기준보다 높은가?
+On a pinned `demo-v1`, does the baseline beat chance?
 
-## 성공 기준
+## Success criteria
 
-- 주지표: Macro-F1
-- baseline: 무작위 기준 0.50
-- 판단 단위: 3시드 평균
+- Primary metric: Macro-F1
+- baseline: chance at 0.50
+- Unit of judgement: mean of three seeds
 
-## 현재 어디까지
+## Where this stands
 
-| 항목 | 상태 | 근거 |
+| Item | Status | Evidence |
 |---|---|---|
-| 질문 Q001 | answered | `questions.md` |
-| 실험 | completed | `experiments/E2026-07-28-color-baseline.md` |
-| 주장 C001 | supported | `claims.md` |
+| Question Q001 | answered | `questions.md` |
+| Experiment | completed | `experiments/E2026-07-28-color-baseline.md` |
+| Claim C001 | supported | `claims.md` |
 
-## 방법
+## Method
 
-개인정보가 없는 가상 dataset에서 동일 설정을 세 시드로 반복한다.
+Repeat identical settings over three seeds on an invented dataset that contains no personal
+data.
 
-## 현재 근거
+## Evidence so far
 
-- demo-v1의 3시드 평균은 0.81이다 — measured, experiment 링크.
+- The three-seed mean on `demo-v1` is 0.81 - measured, linked to the experiment.
 
-## 다음 단계
+## Next
 
-- [ ] 다른 가상 분포에서 재검증
+- [ ] Revalidate on a different invented distribution
 
-## 관련 문서
+## Related documents
 
 - `questions.md`
 - `claims.md`

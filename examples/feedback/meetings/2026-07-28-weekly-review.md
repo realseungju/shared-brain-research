@@ -1,22 +1,23 @@
 ---
 date: 2026-07-28
-title: Demo Vision 주간 리뷰
+title: Demo Vision weekly review
 project: demo-vision
 visibility: redacted
 status: triaged
 ---
 
-# Demo Vision 주간 리뷰
+# Demo Vision weekly review
 
-## 맥락
+## Context
 
-- 목적: baseline 계획과 표시 방식을 검토
-- 참여 역할: 연구자, 동료 검토자
-- 원문 위치: `not-recorded`
+- Purpose: review the baseline plan and how results are reported
+- Roles present: researcher, peer reviewer
+- Source location: `not-recorded`
 
-## 출처 요약
+## Source summary
 
-역할과 연구 workflow만 남긴 가상 요약이다. 실제 사람이나 비공개 연구 내용은 없다.
+An invented summary that keeps only roles and research workflow. It contains no real people
+and no confidential research content.
 
 ## Feedback
 
@@ -24,7 +25,7 @@ status: triaged
 
 - scope: research
 - kind: request
-- statement: 단일 최고값 대신 3시드 결과를 기록한다
+- statement: record the three-seed result instead of the best single seed
 - source_mode: paraphrase
 - status: accepted
 - human_approved: yes
@@ -36,31 +37,31 @@ status: triaged
 
 - scope: workflow
 - kind: request
-- statement: 모든 실행 로그를 Tier 0 context에 복사한다
+- statement: copy every run log into the Tier 0 context
 - source_mode: paraphrase
 - status: rejected
 - human_approved: yes
 - linked_artifact:
-- reason: Tier 0 읽기 비용을 키워 채택하지 않음
+- reason: rejected because it grows the Tier 0 reading cost
 - validation:
 
 ### FB-2026-07-28-03
 
 - scope: research
 - kind: question
-- statement: 다른 데이터 분포에서도 같은 결론이 유지되는가
+- statement: does the same conclusion hold on a different data distribution
 - source_mode: inference
 - status: deferred
 - human_approved: yes
 - linked_artifact:
-- reason: 추가 표본 전에는 판단하지 않음
+- reason: no judgement before a larger sample
 - validation:
 
-## 확정된 결정
+## Decisions
 
-FB-01만 실행한다. FB-02는 거절, FB-03은 추가 근거 대기다.
+Only FB-01 is acted on. FB-02 is rejected; FB-03 waits for more evidence.
 
-## 후속 링크
+## Follow-ups
 
 - `tasks/done/T2026-07-28-run-color-baseline.md`
 - `research/demo-vision/experiments/E2026-07-28-color-baseline.md`

@@ -1,87 +1,138 @@
+> **English is canonical here.** 한국어 번역본은 없습니다 —
+> `system/RULES.ko.md` 와 `system/conventions.ko.md` 가 운영 규칙의 한국어판입니다.
+
 # Decisions
 
-중요한 결정은 기존 내용을 지우지 말고 아래에 ADR을 추가한다. 번복도 지우기가 아니라
-새 ADR로 한다 — 왜 바뀌었는지가 결정 자체만큼 중요하다.
+Record an important decision by adding an ADR below, without deleting what is already
+there. Reversing a decision is also an addition, not a deletion — why it changed matters as
+much as the decision itself.
 
 ```markdown
-## ADR-000: 결정 제목
-- 날짜: YYYY-MM-DD
-- 상태: 제안 | 승인 | 폐기
-- 결정:
-- 근거:
-- 영향:
+## ADR-000: Decision title
+- Date: YYYY-MM-DD
+- Status: proposed | accepted | superseded
+- Decision:
+- Rationale:
+- Consequences:
 ```
 
 ---
 
-## ADR-001: research/는 관례와 템플릿만 제공하고 자동화하지 않는다
-- 날짜: 2026-07-28
-- 상태: 폐기 → ADR-003으로 대체
-- 결정: `research/{project-slug}/overview.md` 구조와 실험 기록 템플릿을 기본 제공한다.
-  생성기·lint 검사·인덱스 자동화는 넣지 않는다.
-- 근거: 연구 기록은 프로젝트마다 형태가 크게 다르다. 구조를 강제하면 맞지 않는 프로젝트에서
-  우회하게 되고, 우회가 시작되면 규칙 전체의 신뢰가 깎인다. 반면 "정본 하나 · 실행 로그와
-  결론 분리 · 근거 종류 명시 · 재현 정보"는 형태와 무관하게 값을 한다. 강제 대상은
-  task/session처럼 **다음 사람이 못 찾으면 유실되는 것**에 한정한다.
-- 영향: research는 Tier 2로 유지되어 시작 절차 읽기 비용이 늘지 않는다.
-  `brain-lint`는 `research/`의 존재만 확인하고 내용은 보지 않는다.
+## ADR-001: research/ ships conventions and templates only, with no automation
+- Date: 2026-07-28
+- Status: **superseded by ADR-003** for this distribution
+- Decision: Ship the `research/{project-slug}/overview.md` layout and an experiment-record
+  template. Do not add generators, lint checks, or index automation for them.
+- Rationale: Research records differ enormously between projects. Enforcing a structure
+  makes people work around it in the projects it does not fit, and once the working around
+  starts, trust in every other rule erodes with it.
+- Consequences: Inherited from `shared-brain-lite`. This distribution narrows it — see
+  ADR-003.
 
-## ADR-002: `personal/`은 요청 전까지 비워 둔다
-- 날짜: 2026-07-28
-- 상태: 폐기 → ADR-004로 대체
-- 결정: 개인 일정·아이디어 관리는 구조를 만들지 않고 확장 지점으로만 남긴다.
-  착수 조건은 `tasks/backlog/`의 opt-in task에 적어 둔다.
-- 근거: 개인 관리 습관은 사람마다 다르고, 쓰지 않는 구조는 읽기 비용만 늘린다.
-  개인정보가 공개 저장소에 섞여 들어가는 경로이기도 하다.
-- 영향: 필요해지면 Planning부터 시작한다. 그전까지 기본 배포판의 표면적이 작게 유지된다.
+## ADR-002: `personal/` stays empty until it is requested
+- Date: 2026-07-28
+- Status: **superseded by ADR-004** for this distribution
+- Decision: Do not build a structure for personal schedules or idea management.
+- Rationale: Personal habits differ from person to person, and a structure nobody uses is
+  pure reading cost. It is also a route by which personal data ends up in a public
+  repository.
+- Consequences: Inherited from `shared-brain-lite`. See ADR-004.
 
-## ADR-003: 연구 핵심 provenance만 생성기와 lint로 강제한다
-- 날짜: 2026-07-28
-- 상태: 승인
-- 결정: research판은 experiment·claim·meeting feedback의 식별자, 근거, 사람 승인 provenance,
-  재현 필드를 생성기와 `research-lint`로 검사한다.
-- 근거: 이 배포판의 대상은 계산과학·ML 연구자다. 결과와 해석, 발언과 결정이 섞이면
-  다음 AI가 잘못된 주장을 이어받는다. 형식 취향이 아니라 provenance 유실을 막는 필드만 강제한다.
-- 영향: 프로젝트별 자유 문서는 허용하지만 닫힌 실험·supported claim·accepted feedback은
-  최소 근거가 없으면 commit 게이트를 통과하지 못한다.
+## ADR-003: Only the research provenance core is enforced by generators and lint
+- Date: 2026-07-28
+- Status: accepted
+- Decision: This distribution checks the identifiers, evidence, human-approval provenance,
+  and reproducibility fields of experiments, claims, and meeting feedback — through the
+  generators and `research-lint`.
+- Rationale: The audience is computational and ML researchers. When results blur into
+  interpretation, or a remark blurs into a decision, the next AI inherits a wrong claim.
+  What is enforced is not a formatting preference; it is the set of fields whose loss
+  destroys provenance.
+- Consequences: Free-form project documents stay allowed, but a closed experiment, a
+  `supported` claim, or `accepted` feedback does not pass the commit gate without its
+  minimum evidence.
 
-## ADR-004: personal은 research판 비범위로 둔다
-- 날짜: 2026-07-28
-- 상태: 승인
-- 결정: `personal/`은 코어 호환성을 위한 빈 디렉터리로만 남기고 opt-in task도 배포하지 않는다.
-- 근거: 연구 실험·feedback 인계라는 제품 경계를 흐리고 공개 저장소 개인정보 위험을 키운다.
-- 영향: 일정·개인 아이디어 기능은 다른 도구나 별도 비공개 확장에서 담당한다.
+## ADR-004: personal/ is out of scope for this distribution
+- Date: 2026-07-28
+- Status: accepted
+- Decision: Keep `personal/` as an empty directory for core compatibility, and do not ship
+  the opt-in task either.
+- Rationale: It blurs the product boundary — research experiments and feedback handoff —
+  and raises the risk of personal data in a public repository.
+- Consequences: Scheduling and personal ideas belong in another tool, or in a separate
+  private extension.
 
-## ADR-005: Feedback 승격은 사람 승인과 redacted 기본값을 요구한다
-- 날짜: 2026-07-28
-- 상태: 승인
-- 결정: 새 meeting은 `visibility: redacted`가 기본이다. AI는 feedback을 추출할 수 있지만
-  `accepted`, `rejected`, `deferred`, `validated`로 triage하려면 `human_approved: yes`가 필요하다.
-- 근거: 미팅 발언·요약·추론은 사실이나 합의가 아니다. 공개 Git에 원문을 넣으면 개인정보와
-  비공개 연구 내용이 영구 이력에 남는다.
-- 영향: accepted feedback은 실제 산출물 링크가 필요하고 decision-candidate는 ADR을 가리킨다.
-  구현 완료와 해결 검증은 별도 상태다. `human_approved`는 승인 신원을 인증하지 않으므로
-  실제 승인자는 Git commit·PR 리뷰에서 확인한다.
+## ADR-005: Promoting feedback requires human approval, and redacted is the default
+- Date: 2026-07-28
+- Status: accepted
+- Decision: A new meeting defaults to `visibility: redacted`. An AI may extract feedback,
+  but triaging it to `accepted`, `rejected`, `deferred`, or `validated` requires
+  `human_approved: yes`.
+- Rationale: What was said in a meeting — and any summary or inference drawn from it — is
+  neither a fact nor an agreement. Putting raw sources into public Git leaves personal data
+  and confidential research in permanent history.
+- Consequences: `accepted` feedback needs a link to a real artifact, and a
+  decision-candidate must point at an ADR. Shipping and confirming are separate states.
+  `human_approved` does not authenticate who approved — that is established from Git commit
+  and PR review history.
 
-## ADR-006: lite는 자동 동기화하지 않는 기준점이다
-- 날짜: 2026-07-28
-- 상태: 승인
-- 결정: 기반 lite commit과 공통/전용 파일 경계를 `UPSTREAM.md`에 고정하고 변경은 선택 반영한다.
-- 근거: 자동 양방향 sync는 research 전용 규칙을 덮어쓰거나 두 제품의 범위를 다시 섞는다.
-- 영향: 공통 코어 수정 반영 시 전체 core·research 회귀 테스트를 함께 실행한다.
+## ADR-006: lite is a reference point, not an auto-synced upstream
+- Date: 2026-07-28
+- Status: accepted
+- Decision: Pin the base lite commit and the shared/own file boundary in `UPSTREAM.md`, and
+  adopt upstream changes selectively.
+- Rationale: Automatic two-way sync either overwrites research-specific rules or blurs the
+  two products' scopes back together.
+- Consequences: When a common-core change is adopted, the full core and research regression
+  suites are run together.
 
-## ADR-007: 주장 타당성 점검 스킬 하나는 배포판에 포함한다
-- 날짜: 2026-07-28
-- 상태: 승인 (skills/README.md의 "실제 스킬 미포함" 방침 대체)
-- 결정: `skills/experiment-claim-check`를 기본 배포판에 포함한다. 그 외 스킬은 계속
-  사용자 확장점으로 남긴다.
-- 근거: `research-lint`는 근거의 **존재**만 검사한다 — 경로가 있고 필드가 채워졌고 사람이
-  검토했다고 기록됐는지. 근거의 **타당성**은 못 본다. 경계에 붙은 스윕, argmax로만 읽은 모델,
-  재본 적 없는 "천장", 검정 없는 "+N pt"는 모든 필드를 채운 채로 통과한다. 이 배포판의 대상이
-  계산과학·ML 연구자인 이상, 그 층이 비어 있으면 provenance 계약이 형식만 남는다.
-- 영향: lint(구조)와 스킬(내용)이 2층 게이트를 이룬다. 스킬은 실행되지 않으므로 강제력은
-  없고 발동 지점만 정한다 — `supported` 승격, experiment 닫기, 수치를 context로 옮기기.
-  상위 브레인의 구체 실패 사례는 미공개 연구 내용이라 옮기지 않고 패턴만 일반화했다.
-  운영 경험 하나에서 나온 목록은 그 프로젝트가 밟은 함정에 치우치므로, 누출·튜닝 예산·
-  다중비교·분산 출처는 재현성 문헌의 표준 점검으로 보완하고 출처를 A/B군으로 표시했다.
-  전체 보고 표준(REFORMS)을 대체하지 않는다 — 기록 직전 게이트라는 범위를 유지한다.
+## ADR-007: One claim-validity skill ships with the distribution
+- Date: 2026-07-28
+- Status: accepted (supersedes the "no real skills shipped" line in `skills/README.md`)
+- Decision: Ship `skills/experiment-claim-check` in the default distribution. Every other
+  skill remains a user extension point.
+- Rationale: `research-lint` checks only that evidence **exists** — a path is present, the
+  fields are filled, a human is recorded as having reviewed it. It cannot check whether the
+  evidence is **sound**. A sweep that ran into its own boundary, a model read only through
+  argmax, a "ceiling" nobody re-measured, a "+N pt" with no test — all of these pass with
+  every field filled. For an audience of computational and ML researchers, leaving that
+  layer empty makes the provenance contract a formality.
+- Consequences: Lint (structure) and the skill (content) form a two-layer gate. The skill
+  does not execute, so it has no enforcement — it only fixes the trigger points: promoting
+  a claim to `supported`, closing an experiment, moving a number into context. The concrete
+  failures behind it come from unpublished research and are generalised into patterns
+  rather than copied. A list drawn from one project's operating experience leans toward the
+  traps that project hit, so leakage, tuning budget, multiple comparisons, and sources of
+  variance are supplemented from standard reproducibility literature, with sources marked
+  A/B. It does not replace a full reporting standard such as REFORMS — it stays scoped to a
+  gate applied just before something is recorded.
+
+## ADR-008: English is canonical; Korean ships as a sibling translation
+- Date: 2026-08-30
+- Status: accepted
+- Decision: English is canonical for the path an agent and a cloner actually walk — the four
+  entry stubs, `system/RULES.md`, `system/conventions.md`, `system/context.md`, this file,
+  every `brain-lint` and `research-lint` message, the section headings emitted by all four
+  generators, the tests, and `examples/`. Korean is preserved as `system/RULES.ko.md` and
+  `system/conventions.ko.md`, each opening with a pointer to the canonical file and the
+  commit it was synced from.
+- Rationale:
+  - Adopted from upstream `shared-brain-lite` ADR-003 through the `UPSTREAM.md` procedure of
+    ADR-006, so the two distributions do not diverge on the common core.
+  - This is a schema change, not a translation. `new-experiment.py` emitted Korean section
+    headings and `research-lint.py` enforced those exact strings; the same coupling ran
+    through `new-meeting.py`, `new-session.py`, `new-task.py`, the test assertions, and the
+    `demo-vision` example set.
+  - The window is now. This repository is private with no external users, so a breaking
+    schema change costs nothing today and becomes permanent with one adopter.
+- Consequences:
+  - Enforced section names changed. Experiments now use `Research question` / `Hypothesis` /
+    `Plan` / `Run conditions` / `Results` / `Interpretation` / `Limits` / `Next`; meetings
+    use `Context` / `Source summary` / `Feedback` / `Decisions` / `Follow-ups`.
+  - Templates under `research/`, `feedback/`, `skills/`, `knowledge/`, `inbox/`, and
+    `tasks/`, plus `docs/` and `README.ko.md`, are still Korean. That is a known residue,
+    deliberately left for a later pass.
+  - Document bodies may be written in any language. Only headings and frontmatter are fixed.
+  - The approval-report renderer that upstream built on 2026-08-30 is **not** adopted here.
+    It is on a two-week trial in the private brain, and nothing goes into a distribution
+    before it survives there.

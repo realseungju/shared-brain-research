@@ -32,37 +32,37 @@ artifact: {artifact}
 
 # baseline
 
-## 연구 질문
+## Research question
 
-baseline보다 나은가.
+Does it beat the baseline?
 
-## 가설
+## Hypothesis
 
 H001
 
-## 계획
+## Plan
 
-세 시드를 비교한다.
+Compare three seeds.
 
-## 실행 조건
+## Run conditions
 
-고정 환경.
+Pinned environment.
 
-## 결과
+## Results
 
-세 시드 평균 0.81.
+Mean of three seeds: 0.81.
 
-## 해석
+## Interpretation
 
-candidate C001을 검토한다.
+Review candidate C001.
 
-## 한계
+## Limits
 
-가상 데이터만 사용했다.
+Invented data only.
 
-## 다음 단계
+## Next
 
-- [ ] 외부 데이터 확인
+- [ ] Check against external data
 """
 
 
@@ -79,21 +79,21 @@ def meeting_body(
 ) -> str:
     return f"""---
 date: 2026-07-28
-title: 주간 리뷰
+title: Weekly review
 project: demo-project
 visibility: redacted
 status: {meeting_status}
 ---
 
-# 주간 리뷰
+# Weekly review
 
-## 맥락
+## Context
 
-연구 진행 검토.
+Review of research progress.
 
-## 출처 요약
+## Source summary
 
-역할만 남긴 요약.
+Summary with roles only.
 
 ## Feedback
 
@@ -101,7 +101,7 @@ status: {meeting_status}
 
 - scope: {scope}
 - kind: {kind}
-- statement: baseline 비교가 필요하다
+- statement: a baseline comparison is needed
 - source_mode: paraphrase
 - status: {feedback_status}
 - human_approved: {approved}
@@ -109,11 +109,11 @@ status: {meeting_status}
 - reason: {reason}
 - validation: {validation}
 
-## 확정된 결정
+## Decisions
 
-없음.
+None.
 
-## 후속 링크
+## Follow-ups
 
 - {linked_artifact}
 """
@@ -143,7 +143,7 @@ class ResearchLintTests(unittest.TestCase):
             path,
             """---
 id: T2026-07-28-follow-up
-title: 후속 확인
+title: Follow-up check
 phase: planning
 ---
 """,
@@ -159,21 +159,21 @@ phase: planning
         (self.project / "experiments").rmdir()
         result = self.lint()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("필수 파일 없음", result.stdout)
-        self.assertIn("필수 디렉터리 없음", result.stdout)
+        self.assertIn("required research project file missing", result.stdout)
+        self.assertIn("required research project directory missing", result.stdout)
 
     def test_closed_experiment_requires_reproducibility_fields(self) -> None:
         self.add_experiment(experiment_body(dataset_version="TBD", artifact="TBD"))
         result = self.lint()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("재현 필드 미완 'dataset_version'", result.stdout)
-        self.assertIn("재현 필드 미완 'artifact'", result.stdout)
+        self.assertIn("missing a reproducibility field 'dataset_version'", result.stdout)
+        self.assertIn("missing a reproducibility field 'artifact'", result.stdout)
 
     def test_closed_experiment_requires_real_commit_reference(self) -> None:
         self.add_experiment(experiment_body(code_commit="latest"))
         result = self.lint()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("code_commit 형식 불량", result.stdout)
+        self.assertIn("invalid code_commit", result.stdout)
 
     def test_valid_closed_experiment_passes(self) -> None:
         self.add_experiment()
@@ -183,24 +183,24 @@ phase: planning
     def test_closed_experiment_rejects_scaffold_only_sections(self) -> None:
         body = experiment_body()
         body = body.replace(
-            "세 시드 평균 0.81.",
-            "| 조건 | 지표 | 값 | N |\n|---|---|---|---|",
+            "Mean of three seeds: 0.81.",
+            "| Arm | Metric | Value | N |\n|---|---|---|---|",
         )
         body = body.replace(
-            "candidate C001을 검토한다.",
-            "- claim candidate:\n- 근거 종류:\n- 이 결과로 말할 수 없는 것:",
+            "Review candidate C001.",
+            "- claim candidate:\n- Evidence kind:\n- What this result cannot say:",
         )
         body = body.replace(
-            "가상 데이터만 사용했다.",
-            "- 미확인 교란:\n- 일반화할 수 없는 범위:",
+            "Invented data only.",
+            "- Unchecked confounds:\n- Where this does not generalise:",
         )
         self.add_experiment(body)
 
         result = self.lint()
 
         self.assertEqual(result.returncode, 1)
-        for section in ("결과", "해석", "한계"):
-            self.assertIn(f"닫힌 experiment 내용 없음 '{section}'", result.stdout)
+        for section in ("Results", "Interpretation", "Limits"):
+            self.assertIn(f"closed experiment section is empty '{section}'", result.stdout)
 
     def test_experiment_template_cannot_close_without_content(self) -> None:
         body = (REPO / "research/_template/experiment.md").read_text(encoding="utf-8")
@@ -222,8 +222,8 @@ phase: planning
         result = self.lint()
 
         self.assertEqual(result.returncode, 1)
-        for section in ("결과", "해석", "한계"):
-            self.assertIn(f"닫힌 experiment 내용 없음 '{section}'", result.stdout)
+        for section in ("Results", "Interpretation", "Limits"):
+            self.assertIn(f"closed experiment section is empty '{section}'", result.stdout)
 
     def test_supported_claim_rejects_unverified_evidence(self) -> None:
         experiment = self.add_experiment()
@@ -233,7 +233,7 @@ phase: planning
 
 ## C001
 
-- statement: baseline보다 우수하다
+- statement: it beats the baseline
 - status: supported
 - evidence: {experiment.relative_to(self.root).as_posix()}
 - evidence_kind: unverified
@@ -243,7 +243,7 @@ phase: planning
         )
         result = self.lint()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("근거가 unverified", result.stdout)
+        self.assertIn("rests on unverified evidence", result.stdout)
 
     def test_supported_claim_rejects_empty_evidence_kind(self) -> None:
         experiment = self.add_experiment()
@@ -253,7 +253,7 @@ phase: planning
 
 ## C001
 
-- statement: baseline보다 우수하다
+- statement: it beats the baseline
 - status: supported
 - evidence: {experiment.relative_to(self.root).as_posix()}
 - evidence_kind:
@@ -263,7 +263,7 @@ phase: planning
         )
         result = self.lint()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("claim 필수 필드 없음 'evidence_kind'", result.stdout)
+        self.assertIn("claim field missing 'evidence_kind'", result.stdout)
 
     def test_supported_claim_requires_human_review(self) -> None:
         experiment = self.add_experiment()
@@ -273,7 +273,7 @@ phase: planning
 
 ## C001
 
-- statement: baseline보다 우수하다
+- statement: it beats the baseline
 - status: supported
 - evidence: {experiment.relative_to(self.root).as_posix()}
 - evidence_kind: measured
@@ -283,7 +283,7 @@ phase: planning
         )
         result = self.lint()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("사람 검토 없음", result.stdout)
+        self.assertIn("has no human review", result.stdout)
 
     def test_supported_claim_requires_project_experiment(self) -> None:
         write(
@@ -292,7 +292,7 @@ phase: planning
 
 ## C001
 
-- statement: baseline보다 우수하다
+- statement: it beats the baseline
 - status: supported
 - evidence: UPSTREAM.md
 - evidence_kind: measured
@@ -302,7 +302,7 @@ phase: planning
         )
         result = self.lint()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("project experiment 밖", result.stdout)
+        self.assertIn("points outside the project experiments", result.stdout)
 
     def test_accepted_feedback_requires_human_approval(self) -> None:
         self.add_follow_up_task()
@@ -312,7 +312,7 @@ phase: planning
         )
         result = self.lint()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("사람 승인 없음", result.stdout)
+        self.assertIn("has no human approval", result.stdout)
 
     def test_feedback_rejects_empty_core_field(self) -> None:
         write(
@@ -321,7 +321,7 @@ phase: planning
         )
         result = self.lint()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("feedback 필수 필드 없음 'scope'", result.stdout)
+        self.assertIn("feedback field missing 'scope'", result.stdout)
 
     def test_rejected_and_deferred_feedback_require_reason(self) -> None:
         for status in ("rejected", "deferred"):
@@ -336,7 +336,7 @@ phase: planning
                 )
                 result = self.lint()
                 self.assertEqual(result.returncode, 1)
-                self.assertIn(f"{status} feedback 이유 없음", result.stdout)
+                self.assertIn("feedback has no reason", result.stdout)
 
     def test_feedback_reason_does_not_use_validation_field(self) -> None:
         for status in ("rejected", "deferred"):
@@ -346,7 +346,7 @@ phase: planning
                     meeting_body(
                         feedback_status=status,
                         linked_artifact="",
-                        reason="사람이 분류한 이유",
+                        reason="reason recorded by a human",
                         validation="",
                     ),
                 )
@@ -360,7 +360,7 @@ phase: planning
         )
         result = self.lint()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("연결 산출물 없음", result.stdout)
+        self.assertIn("links to no artifact", result.stdout)
 
     def test_decision_candidate_requires_adr_link(self) -> None:
         self.add_follow_up_task()
@@ -370,7 +370,7 @@ phase: planning
         )
         result = self.lint()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("ADR을 가리키지 않음", result.stdout)
+        self.assertIn("does not point at an ADR", result.stdout)
 
     def test_valid_accepted_feedback_passes(self) -> None:
         self.add_follow_up_task()
@@ -389,7 +389,7 @@ phase: planning
         )
         result = self.lint()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("검증 결과 없음", result.stdout)
+        self.assertIn("has no validation result", result.stdout)
 
     def test_closed_meeting_rejects_unfinished_feedback(self) -> None:
         self.add_follow_up_task()
@@ -405,13 +405,13 @@ phase: planning
                             if status == "accepted"
                             else ""
                         ),
-                        reason="추가 근거 대기" if status == "deferred" else "",
+                        reason="waiting on more evidence" if status == "deferred" else "",
                         meeting_status="closed",
                     ),
                 )
                 result = self.lint()
                 self.assertEqual(result.returncode, 1)
-                self.assertIn("closed meeting에 미종결", result.stdout)
+                self.assertIn("closed meeting still has unfinished feedback", result.stdout)
 
     def test_closed_meeting_accepts_terminal_feedback(self) -> None:
         self.add_follow_up_task()
@@ -419,12 +419,12 @@ phase: planning
             {
                 "feedback_status": "rejected",
                 "linked_artifact": "",
-                "reason": "범위 밖 요청",
+                "reason": "out of scope",
             },
             {
                 "feedback_status": "validated",
                 "linked_artifact": "tasks/backlog/T2026-07-28-follow-up.md",
-                "validation": "재현 확인",
+                "validation": "reproduction confirmed",
             },
         )
         for fields in cases:

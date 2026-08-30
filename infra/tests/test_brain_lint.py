@@ -28,50 +28,50 @@ class BrainLintTests(unittest.TestCase):
             self.root / "tasks/backlog/T2026-07-28-example.md",
             """---
 id: T2026-07-28-wrong
-title: 예제
+title: Example
 phase: planning
 ---
 """,
         )
         result = self.lint()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("id와 파일명 불일치", result.stdout)
+        self.assertIn("task id does not match filename", result.stdout)
 
     def test_task_rejects_unknown_phase(self) -> None:
         write(
             self.root / "tasks/backlog/T2026-07-28-example.md",
             """---
 id: T2026-07-28-example
-title: 예제
+title: Example
 phase: brainstorming
 ---
 """,
         )
         result = self.lint()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("phase 값 불량", result.stdout)
+        self.assertIn("invalid task phase value", result.stdout)
 
     def test_doing_task_requires_agent_and_started(self) -> None:
         write(
             self.root / "tasks/doing/T2026-07-28-example.md",
             """---
 id: T2026-07-28-example
-title: 예제
+title: Example
 phase: implementation
 ---
 """,
         )
         result = self.lint()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("doing task 필드 없음 'agent'", result.stdout)
-        self.assertIn("doing task 필드 없음 'started'", result.stdout)
+        self.assertIn("doing task field missing 'agent'", result.stdout)
+        self.assertIn("doing task field missing 'started'", result.stdout)
 
     def test_done_task_requires_closure_fields(self) -> None:
         write(
             self.root / "tasks/done/T2026-07-28-example.md",
             """---
 id: T2026-07-28-example
-title: 예제
+title: Example
 phase: validation
 finished: 2026-07-28
 closed_reason: finished-ish
@@ -81,12 +81,12 @@ result: abc1234
         )
         result = self.lint()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("closed_reason 값 불량", result.stdout)
+        self.assertIn("invalid done task closed_reason value", result.stdout)
 
     def test_duplicate_task_id_across_states(self) -> None:
         body = """---
 id: T2026-07-28-example
-title: 예제
+title: Example
 phase: planning
 ---
 """
@@ -94,7 +94,7 @@ phase: planning
         write(self.root / "tasks/doing/T2026-07-28-example.md", body)
         result = self.lint()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("task id 중복", result.stdout)
+        self.assertIn("duplicate task id", result.stdout)
 
     def test_session_requires_body_sections(self) -> None:
         name = "2026-07-28-example.md"
@@ -107,33 +107,33 @@ slug: example
 tags: [demo]
 ---
 
-## 한 것
+## What was done
 
-완료
+Done.
 """,
         )
         write(
             self.root / "system/sessions/index.md",
-            f"# Sessions Index\n\n- 2026-07-28 · [example]({name}) — Codex — #demo — 훅\n",
+            f"# Sessions Index\n\n- 2026-07-28 · [example]({name}) — Codex — #demo — hook\n",
         )
         result = self.lint()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("session 섹션 없음 '미완·다음'", result.stdout)
+        self.assertIn("session section missing 'Open and next'", result.stdout)
 
     def test_index_pointing_at_missing_session(self) -> None:
         write(
             self.root / "system/sessions/index.md",
-            "# Sessions Index\n\n- 2026-07-28 · [gone](2026-07-28-gone.md) — Codex — #demo — 훅\n",
+            "# Sessions Index\n\n- 2026-07-28 · [gone](2026-07-28-gone.md) — Codex — #demo — hook\n",
         )
         result = self.lint()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("없는 파일을 가리킴", result.stdout)
+        self.assertIn("points at a file that does not exist", result.stdout)
 
     def test_entry_stub_must_point_at_rules(self) -> None:
-        write(self.root / "CLAUDE.md", "아무 말이나 적혀 있다.\n")
+        write(self.root / "CLAUDE.md", "Some unrelated text.\n")
         result = self.lint()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("진입점이 system/RULES.md를 가리키지 않음", result.stdout)
+        self.assertIn("entry point does not point at system/RULES.md", result.stdout)
 
     def test_session_requires_index_entry(self) -> None:
         write(
@@ -145,18 +145,18 @@ slug: example
 tags: [demo]
 ---
 
-## 한 것
+## What was done
 
-완료
+Done.
 
-## 미완·다음
+## Open and next
 
-없음
+None.
 """,
         )
         result = self.lint()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("index 미등재", result.stdout)
+        self.assertIn("session not listed in index", result.stdout)
 
 
 if __name__ == "__main__":

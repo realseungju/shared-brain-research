@@ -1,110 +1,123 @@
-# RULES — Shared Brain Research 운영 규칙
+# RULES — Shared Brain Research
 
-**기록되지 않은 작업과 근거는 다음 에이전트에게 존재하지 않는다.**
+**Work and evidence that aren't written down do not exist for the next agent.**
 
-## 시작 절차
+한국어 번역: [`RULES.ko.md`](RULES.ko.md)
 
-1. 이 문서를 읽는다.
-2. `system/context.md`를 읽는다.
-3. `system/sessions/index.md` 꼬리 3~5줄을 읽는다.
-4. `tasks/doing/` 파일명만 확인한다.
-5. 현재 작업에 연결된 task·spec만 추가로 읽는다.
+## Starting a session
 
-전체 저장소를 매번 통독하지 않는다.
+1. Read this file.
+2. Read `system/context.md`.
+3. Read the last 3-5 lines of `system/sessions/index.md`.
+4. Look at the filenames in `tasks/doing/` — filenames only.
+5. Read only the task and spec connected to the work at hand.
 
-## 읽기 계층
+Do not read the whole repository every session.
 
-| Tier | 읽는 시점 | 대상 |
+## Reading tiers
+
+| Tier | When | What |
 |---|---|---|
-| 0 | 모든 session | `context.md`, session index 꼬리, doing 파일명 |
-| 1 | 작업 착수 | 해당 task, 연결된 spec |
-| 2 | 필요할 때만 | ADR, knowledge, research, 과거 session |
+| 0 | Every session | `context.md`, the tail of the session index, filenames in `doing/` |
+| 1 | Starting a task | That task and the spec it links to |
+| 2 | Only when needed | ADRs, knowledge, research, past sessions |
 
-## 작업 흐름
+## Workflow
 
 ```text
 inbox → planning/spec → tasks/backlog → tasks/doing → tasks/done
 ```
 
-- inbox는 아이디어 캡처용이다. 바로 구현하지 않는다.
-- 기능 구현 전 요구사항과 완료 조건을 Spec 또는 task에 적는다.
-- task 착수 시 `doing/`으로 옮기고 `agent`, `started`를 채운다.
-- 완료 시 `done/`으로 옮기고 `finished`, `closed_reason`, `result`를 채운다.
-- 한 task에는 한 명의 활성 작성자만 둔다.
+- `inbox/` is for capturing ideas. Do not implement straight from it.
+- Write the requirements and the done condition into a spec or a task before building.
+- When a task starts, move it to `doing/` and fill in `agent` and `started`.
+- When it finishes, move it to `done/` and fill in `finished`, `closed_reason`, `result`.
+- One task has one active writer.
 
-필드 이름과 허용값은 `system/conventions.md`에 전부 적혀 있다. 채우지 않으면
-`brain-lint`가 거부하므로 추측하지 말고 표를 본다.
 
-연구 흐름:
+The research flow:
 
 ```text
-research question → hypothesis → experiment → evidence → claim/decision → next experiment
+research question -> hypothesis -> experiment -> evidence -> claim/decision -> next
 ```
 
-- 결과와 해석을 분리한다.
-- 실패·무효 실험도 삭제하지 않고 닫힌 상태로 기록한다.
-- supported claim은 실제 experiment 근거와 사람 검토가 필요하다.
-- 연구 파일은 Tier 2다. 활성 항목만 context나 task에서 가리킨다.
+- Keep results and interpretation apart.
+- A failed or invalid experiment is closed, never deleted.
+- A `supported` claim needs real experiment evidence and a human review.
+- Research files are Tier 2. Point at the active ones from context or a task.
+Field names and allowed values are all in `system/conventions.md`. `brain-lint` rejects a
+file that leaves them out, so read the table instead of guessing.
 
-## 파일 생성
+## Creating files
 
-task와 session 파일은 손으로 새로 만들지 않는다.
+Task and session files are never created by hand.
 
 ```sh
-python infra/new-task.py {slug} --title "제목"
-python infra/new-session.py {slug} --agent {이름} --tags {태그} \
-  --hook "index 한 줄 요약" --did "한 것" --next "다음"
+python infra/new-task.py {slug} --title "Title"
+python infra/new-session.py {slug} --agent {name} --tags {tags} \
+  --hook "One line the next agent reads to decide whether to open this" \
+  --did "What was done" --next "What is next"
 python infra/new-experiment.py {slug} --project {project} \
-  --title "실험 제목" --hypothesis {가설}
-python infra/new-meeting.py {slug} --title "미팅 제목" --project {project}
+  --title "Experiment title" --hypothesis {hypothesis}
+python infra/new-meeting.py {slug} --title "Meeting title" --project {project}
 ```
 
-생성 후 task 본문과 session 본문을 보강하는 것은 허용한다.
+Filling in the body of a generated task or session afterwards is expected.
 
-## Session 종료
+## Closing a session
 
-다음 에이전트가 알아야 할 작업이면 session 요약을 남긴다.
+Leave a session summary if the next agent needs to know about the work.
 
-- 미완 작업은 task에 둔다.
-- 현재 상태 변화는 `system/context.md`에 반영한다.
-- 재사용 가능한 교훈은 `knowledge/`에 승격한다.
-- 사소한 문구 수정은 task와 session을 생략할 수 있다.
+- Unfinished work belongs in a task, not in the summary.
+- Changes to the current state go into `system/context.md`.
+- Reusable lessons are promoted to `knowledge/`.
+- A typo fix or a wording change can skip the task and the session summary.
 
-## Research 기록
+## Research records
 
-연구·실험 기록은 `research/{project-slug}/`에 둔다. 관례와 템플릿은 `research/README.md`.
+Research and experiment records live in `research/{project-slug}/`. Conventions and
+templates are in `research/README.md`.
 
-- 프로젝트마다 `overview.md`, `questions.md`, `claims.md`, `experiments/`를 둔다.
-- **정본 문서 하나를 지정**하고 결론은 거기에만 둔다. 실행 로그는 별도 문서다.
-- research는 Tier 2다. 시작 절차에서 읽지 않는다 — 필요할 때만 연다.
-- 원시 데이터·모델 가중치·비밀정보는 Git에 넣지 않는다. 위치만 적는다.
-- 정량 결과는 dataset/version, code commit, seed·반복, artifact, 근거 종류를 남긴다.
-- `python infra/research-lint.py`가 실험·claim·feedback 계약까지 검사한다.
-- 수치를 **주장으로 굳히기 직전**(claim supported 승격·experiment 닫기·context로 옮기기)에는
-  `skills/experiment-claim-check`를 적용한다. lint는 근거의 존재만 보고 타당성은 못 본다.
+- Every project has `overview.md`, `questions.md`, `claims.md`, and `experiments/`.
+- **Name one canonical document** and keep the conclusions only there. Execution logs are a
+  separate document.
+- Research is Tier 2. It is not read during the start procedure — open it when needed.
+- Raw data, model weights, and secrets do not go in Git. Record where they are instead.
+- A quantitative result records dataset/version, code commit, seeds/repeats, artifact,
+  and the kind of evidence.
+- `python infra/research-lint.py` checks the experiment, claim, and feedback
+  contracts.
+- **Just before a number hardens into a claim** — promoting a claim to `supported`,
+  closing an experiment, moving a figure into context — apply
+  `skills/experiment-claim-check`. Lint sees whether evidence exists; it cannot
+  see whether that evidence supports the claim.
 
-## 미팅 Feedback
+## Meeting feedback
 
-미팅 파일은 `feedback/meetings/`에 둔다. 상세 계약은 `feedback/README.md`.
+Meeting files live in `feedback/meetings/`. The full contract is in `feedback/README.md`.
 
-- 기본 `visibility`는 `redacted`다.
-- 발언은 사실이나 결정이 아니다. 인용·요약·AI 추론을 구분한다.
-- AI는 후보를 추출할 수 있지만 `human_approved: yes`를 사람 대신 기록하지 않는다.
-- 사람 승인과 연결 산출물이 있는 feedback만 accepted가 된다.
-- 구현 완료를 validated로 자동 바꾸지 않는다. 문제 해결 여부를 따로 확인한다.
-- `human_approved`는 provenance 기록이지 신원 인증이 아니다. 실제 승인은 Git 리뷰 이력으로
-  확인한다.
+- `visibility` defaults to `redacted`.
+- **What someone said is not a fact and not a decision.** Keep quote, paraphrase, and
+  inference apart.
+- An AI may extract candidates, but never writes `human_approved: yes` on a person's behalf.
+- Feedback becomes `accepted` only with human approval and a linked artifact.
+- Shipping something does not make it `validated`. Confirm the problem was actually solved.
+- `human_approved` records provenance, not identity. Real approval is established by Git
+  review history.
 
-`personal/`은 상속 호환성을 위한 빈 확장점이며 이 배포판의 기능 범위가 아니다.
+## Optional areas
 
-## 금지
+`personal/` is an empty extension point kept for compatibility with the base starter. It is
+not in scope for this distribution.
 
-- Spec이나 완료 조건 없는 기능 구현
-- task/session 파일을 생성기 없이 새로 만들기
-- 검증하지 않은 결과를 완료로 기록
-- 미검증 claim을 `supported`로 기록
-- 사람 승인 없이 feedback을 `accepted` 또는 `validated`로 변경
-- 미팅 발언이나 AI 추론을 확정 결정으로 기록
-- 실제 개인정보·토큰·비밀정보를 공개 저장소에 기록
-- 원문 녹취·전사본을 공개 저장소에 기록
-- 대용량 데이터나 모델 파일을 Git에 직접 저장
+## Prohibited
+
+- Building a feature with no spec and no done condition
+- Recording an unverified claim as `supported`
+- Moving feedback to `accepted` or `validated` without human approval
+- Recording something said in a meeting, or an AI inference, as a settled decision
+- Creating a task or session file without the generator
+- Recording an unverified result as complete
+- Committing real personal data, tokens, or secrets to a public repository
+- Storing large datasets or model files directly in Git
+- Committing raw recordings or transcripts to a public repository

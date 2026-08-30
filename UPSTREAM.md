@@ -1,29 +1,37 @@
 # Upstream
 
-Shared Brain Research는 `shared-brain-lite`의 연구자용 배포판이다.
+Shared Brain Research is the researcher-facing distribution of `shared-brain-lite`.
 
-| 항목 | 값 |
+| Field | Value |
 |---|---|
 | upstream | `https://github.com/realseungju/shared-brain-lite` |
 | imported commit | `5209e42241b8b8eb0cc5d6423f725be0530f6533` |
 | imported date | 2026-07-28 |
 | local base commit | `1552b27` |
+| last adopted commit | `e01a353` (English canonical core, 2026-08-30) |
 
-## 소유 경계
+## Ownership boundary
 
-공통 코어:
+Common core:
 
-- AI 진입 stub
-- task/session 생성기와 스키마
+- AI entry stubs
+- The task and session generators and their schema
 - `infra/brain-lint.py`
-- Git hook과 공통 회귀 테스트
+- The Git hook and the shared regression tests
+- `system/RULES.md` and `system/conventions.md`, with their `.ko.md` translations
 
-Research판 소유:
+Owned by this distribution:
 
-- `research/` 프로젝트·실험·claim 계약
-- `feedback/` 미팅 feedback 계약
+- The `research/` project, experiment, and claim contract
+- The `feedback/` meeting contract
 - `infra/new-experiment.py`, `infra/new-meeting.py`, `infra/research-lint.py`
-- 연구 예시·교차 AI 데모·플랫폼 호환성 문서
+- Research examples, the cross-agent demo, and the platform compatibility document
 
-upstream 변경은 자동으로 덮어쓰지 않는다. 변경 내용을 검토하고 공통 코어에 필요한 수정만
-선택적으로 반영한 뒤 전체 테스트를 다시 실행한다.
+Upstream changes are never applied automatically. Review them, take only what the common
+core needs, and re-run the full suite (core + research) afterwards.
+
+## Not adopted
+
+| Upstream change | Why not |
+|---|---|
+| Approval-report renderer (`infra/render-report.py`, 2026-08-30) | On a two-week trial in the private brain. Nothing enters a distribution before it survives there. Revisit after 2026-09-13. |
