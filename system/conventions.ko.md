@@ -1,5 +1,5 @@
 > **Canonical: [`conventions.md`](conventions.md) (English).** This is a translation and may
-> lag. Synced from commit: `PENDING`.
+> lag. Synced from commit: `730a0e8`.
 > 이 문서는 번역본입니다. 규칙이 어긋나면 영어 정본이 우선합니다.
 
 # Conventions
