@@ -42,6 +42,13 @@ DEFAULT_LIMIT = 25
 CITATIONS_PER_INPUT = 200
 BATCH = 50
 CANDIDATES_HEADING = "## Candidate records"
+STALE_MARK = " · not returned"
+# Every character str.splitlines() breaks on. A frontmatter value must contain none of them.
+LINE_BREAKS = re.compile("[\n\r\v\f\x1c\x1d\x1e\x85  ]")
+TEX_SPECIAL = {
+    "\\": r"\textbackslash{}", "{": r"\textbraceleft{}", "}": r"\textbraceright{}", "%": r"\%", "&": r"\&",
+    "$": r"\$", "#": r"\#", "_": r"\_", "~": r"\textasciitilde{}", "^": r"\textasciicircum{}",
+}
 
 
 class ProviderError(RuntimeError):
@@ -131,10 +138,17 @@ def clean_doi(value: str | None) -> str:
 
 
 def norm_title(value: str) -> str:
+    """Accents dropped; letters and digits of every script kept, so a Korean or Chinese title
+    still has a key."""
     text = unicodedata.normalize("NFKD", value or "")
-    text = "".join(c for c in text if not unicodedata.combining(c))
-    text = re.sub(r"[^0-9a-zA-Z]+", " ", text)
-    return re.sub(r"\s+", " ", text).strip().lower()
+    text = unicodedata.normalize("NFKC", "".join(c for c in text if not unicodedata.combining(c)))
+    text = re.sub(r"[\W_]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip().casefold()
+
+
+def surname(name: str) -> str:
+    parts = norm_title(name).split()
+    return parts[-1] if parts else ""
 
 
 def work_locations(work: dict) -> list[dict]:
@@ -179,6 +193,7 @@ def version_of(work: dict) -> dict:
         "year": work.get("publication_year"),
         "cited_by": work.get("cited_by_count") or 0,
         "is_retracted": bool(work.get("is_retracted")),
+        "authors": [s for s in (surname(n) for n in work_authors(work)[0]) if s],
     }
 
 
@@ -192,8 +207,9 @@ def work_authors(work: dict) -> tuple[list[str], int]:
 
 
 def matches(entry: dict, version: dict, title_key: str) -> bool:
-    """Same paper? Shared IDs first. A matching title links versions only when the two do not
-    carry different published DOIs — otherwise two distinct papers with one title would fold."""
+    """Same paper? Shared IDs first. A matching title links versions only when they share an
+    author, do not carry different published DOIs, and are at most two years apart — otherwise
+    two distinct papers with one title would fold. Without authors on both sides, no title link."""
     if version["openalex"] and version["openalex"] in entry["openalex"]:
         return True
     if version["doi"] and version["doi"] in entry["dois"]:
@@ -202,6 +218,8 @@ def matches(entry: dict, version: dict, title_key: str) -> bool:
         return True
     if title_key and title_key == entry["norm"]:
         if version["doi"] and entry["dois"] and version["doi"] not in entry["dois"]:
+            return False
+        if not set(version.get("authors") or []) & entry["surnames"]:
             return False
         years = [v["year"] for v in entry.get("versions", []) if v.get("year")]
         return not (version["year"] and years and min(abs(version["year"] - y) for y in years) > 2)
@@ -213,7 +231,8 @@ def new_entry(work: dict) -> dict:
     title = work.get("display_name") or work.get("title") or ""
     return {
         "title": title, "norm": norm_title(title), "authors": authors, "n_authors": n_authors,
-        "versions": [], "openalex": set(), "dois": set(), "arxivs": set(), "via": set(), "rank": None,
+        "versions": [], "openalex": set(), "dois": set(), "arxivs": set(), "surnames": set(), "via": set(),
+        "rank": None,
     }
 
 
@@ -226,13 +245,29 @@ def add_version(entry: dict, version: dict) -> None:
         entry["dois"].add(version["doi"])
     if version["arxiv"]:
         entry["arxivs"].add(version["arxiv"])
+    entry["surnames"].update(version.get("authors") or [])
+
+
+def absorb(entry: dict, other: dict) -> None:
+    for version in other["versions"]:
+        add_version(entry, version)
+    entry["via"].update(other["via"])
+    if other["rank"] is not None and (entry["rank"] is None or other["rank"] < entry["rank"]):
+        entry["rank"] = other["rank"]
+    if not entry["authors"]:
+        entry["authors"], entry["n_authors"] = other["authors"], other["n_authors"]
 
 
 def merge_work(pool: list[dict], work: dict, via: str | None, rank: int | None = None) -> dict:
     version = version_of(work)
     title_key = norm_title(work.get("display_name") or work.get("title") or "")
-    entry = next((e for e in pool if matches(e, version, title_key)), None)
-    if entry is None:
+    found = [e for e in pool if matches(e, version, title_key)]
+    if found:
+        entry = found[0]
+        for other in found[1:]:  # this work shows the entries are one paper
+            absorb(entry, other)
+        pool[:] = [e for e in pool if not any(e is other for other in found[1:])]
+    else:
         entry = new_entry(work)
         pool.append(entry)
     add_version(entry, version)
@@ -267,8 +302,9 @@ def with_published_versions(provider: OpenAlex, ids: list[str], works: dict[str,
 
 def summarize(entry: dict) -> dict:
     """Display fields: the published version wins; preprint-only is stated, not hidden."""
-    published = [v for v in entry["versions"] if v["kind"] == "published"]
-    lead = published[0] if published else entry["versions"][0]
+    current = [v for v in entry["versions"] if not v.get("stale")] or entry["versions"]
+    published = [v for v in current if v["kind"] == "published"]
+    lead = published[0] if published else current[0]
     years = [v["year"] for v in entry["versions"] if v["year"]]
     arxivs = sorted(entry["arxivs"])
     return {
@@ -281,9 +317,9 @@ def summarize(entry: dict) -> dict:
         "doi": lead["doi"] if published else "",
         "arxiv": arxivs[0] if arxivs else "",
         "openalex": [v["openalex"] for v in entry["versions"]],
-        "cited_by": sum(v["cited_by"] for v in entry["versions"]),
+        "cited_by": sum(v["cited_by"] for v in current),
         "connections": len(entry["via"]),
-        "is_retracted": any(v["is_retracted"] for v in entry["versions"]),
+        "is_retracted": any(v["is_retracted"] for v in current),
         "versions": entry["versions"],
     }
 
@@ -292,21 +328,29 @@ def summarize(entry: dict) -> dict:
 
 
 def frontmatter(text: str) -> tuple[dict[str, str], str]:
-    lines = text.splitlines()
+    # Split on LF only: splitlines() would also break inside candidate JSON strings that carry
+    # U+2028 and the like, and rewriting the body would then corrupt the records.
+    lines = text.split("\n")
     if not lines or lines[0].strip() != "---":
         raise UsageError("frontmatter missing")
     meta: dict[str, str] = {}
     for index, line in enumerate(lines[1:], start=1):
         if line.strip() == "---":
-            return meta, "\n".join(lines[index + 1:]) + "\n"
+            return meta, "\n".join(lines[index + 1:])
         match = re.match(r"^([A-Za-z0-9_]+):[ \t]*(.*)$", line)
         if match:
             meta[match.group(1)] = match.group(2).strip()
     raise UsageError("frontmatter not closed")
 
 
+def flat(value: object) -> str:
+    """One frontmatter line. External metadata (authors, venues, titles) may carry any line
+    break str.splitlines() honours; each becomes a space so it cannot start a new field."""
+    return re.sub(r"\s+", " ", LINE_BREAKS.sub(" ", str(value))).strip()
+
+
 def render(meta: dict[str, str], body: str) -> str:
-    head = "\n".join(f"{key}: {value}" for key, value in meta.items())
+    head = "\n".join(f"{key}: {flat(value)}" for key, value in meta.items())
     return f"---\n{head}\n---\n{body}"
 
 
@@ -332,7 +376,7 @@ def join_list(values: list[str]) -> str:
 
 def one_line(value: str, field: str) -> str:
     result = (value or "").strip()
-    if not result or "\n" in result or "\r" in result:
+    if not result or LINE_BREAKS.search(result):
         raise UsageError(f"{field} must be a single non-empty line")
     return result
 
@@ -353,8 +397,41 @@ def read_candidates(text: str) -> list[dict]:
     return json.loads(match.group(1))
 
 
+def record_authors(meta: dict[str, str]) -> list[str]:
+    names = re.sub(r"\s*\(\+\d+\)$", "", meta.get("authors", ""))
+    return [n.strip() for n in names.split(";") if n.strip() and n.strip() != "unknown"]
+
+
+def stored_versions(body: str) -> list[dict]:
+    """Read back the Versions table a record was written with."""
+    if "## Versions" not in body:
+        return []
+    section = body.split("## Versions", 1)[1].split("\n## ", 1)[0]
+    versions = []
+    for line in section.splitlines():
+        cells = [c.strip().replace("\\|", "|") for c in re.split(r"(?<!\\)\|", line.strip())[1:-1]]
+        if len(cells) != 6 or not WORK_RE.match(cells[4]):
+            continue
+        kind = cells[0].replace(STALE_MARK, "")
+        ref = cells[3]
+        versions.append({
+            "openalex": cells[4],
+            "kind": kind,
+            "doi": ref[4:] if ref.startswith("doi:") else "",
+            "arxiv": ref[6:] if ref.startswith("arxiv:") else "",
+            "venue": "" if cells[1] == "-" or (kind == "preprint" and cells[1] == "arXiv") else cells[1],
+            "venue_type": "",
+            "year": int(cells[2]) if cells[2].isdigit() else None,
+            "cited_by": int(cells[5]) if cells[5].isdigit() else 0,
+            "is_retracted": False,
+            "authors": [],
+            "stale": STALE_MARK in cells[0],
+        })
+    return versions
+
+
 def cell(value: object) -> str:
-    return str(value if value not in (None, "") else "-").replace("|", "\\|").replace("\n", " ")
+    return flat(value if value not in (None, "") else "-").replace("|", "\\|")
 
 
 class Library:
@@ -376,13 +453,29 @@ class Library:
         return result
 
     def record_entries(self) -> list[tuple[str, dict]]:
-        entries = []
-        for record_id, meta in self.records().items():
-            entries.append((record_id, {
+        """Stored records as merge entries: versions (with years) come from the Versions table,
+        so a saved paper is matched by exactly the rule candidates are merged by."""
+        entries: list[tuple[str, dict]] = []
+        if not self.papers.is_dir():
+            return entries
+        for path in sorted(self.papers.glob("L*.md")):
+            meta, body = read_md(path)
+            versions = stored_versions(body)
+            if not versions and meta.get("year", "").isdigit():
+                versions = [{"year": int(meta["year"])}]
+            dois = {v["doi"] for v in versions if v.get("doi")}
+            arxivs = {v["arxiv"] for v in versions if v.get("arxiv")}
+            if meta.get("doi", "none") != "none":
+                dois.add(meta["doi"])
+            if meta.get("arxiv", "none") != "none":
+                arxivs.add(meta["arxiv"])
+            entries.append((meta.get("id", path.stem), {
                 "norm": norm_title(meta.get("title", "")),
                 "openalex": set(split_list(meta.get("openalex", ""))),
-                "dois": {meta["doi"]} if meta.get("doi", "none") != "none" else set(),
-                "arxivs": {meta["arxiv"]} if meta.get("arxiv", "none") != "none" else set(),
+                "dois": dois,
+                "arxivs": arxivs,
+                "surnames": {s for s in (surname(n) for n in record_authors(meta)) if s},
+                "versions": versions,
             }))
         return entries
 
@@ -399,12 +492,12 @@ class Library:
         return f"L{(max(numbers) + 1) if numbers else 1:04d}"
 
     def write_record(self, record_id: str, data: dict, meta_extra: dict[str, str], notes: str) -> None:
-        authors = "; ".join(data["authors"]) or "unknown"
+        authors = "; ".join(n.replace(";", ",") for n in data["authors"]) or "unknown"
         if data["n_authors"] > len(data["authors"]):
             authors += f" (+{data['n_authors'] - len(data['authors'])})"
         meta = {
             "id": record_id,
-            "title": one_line(data["title"], "title"),
+            "title": flat(data["title"]) or "untitled",
             "year": str(data["year"] or "unknown"),
             "authors": authors,
             "venue": data["venue"],
@@ -417,14 +510,15 @@ class Library:
         }
         meta.update(meta_extra)
         rows = "\n".join(
-            f"| {v['kind']} | {cell(v['venue'] or 'arXiv' if v['arxiv'] else v['venue'])} | {cell(v['year'])} "
+            f"| {v['kind']}{STALE_MARK if v.get('stale') else ''} "
+            f"| {cell(v['venue'] or 'arXiv' if v['arxiv'] else v['venue'])} | {cell(v['year'])} "
             f"| {cell(('doi:' + v['doi']) if v['doi'] else ('arxiv:' + v['arxiv']) if v['arxiv'] else '')} "
             f"| {v['openalex']} | {v['cited_by']} |"
             for v in data["versions"]
         )
         retracted = "\n> **Retracted.** Keep the record, but do not cite it as support.\n" if data["is_retracted"] else ""
         body = (
-            f"\n# {data['title']}\n{retracted}\n## Versions\n\n"
+            f"\n# {meta['title']}\n{retracted}\n## Versions\n\n"
             "| kind | venue | year | id | openalex | cited by |\n|---|---|---|---|---|---|\n"
             f"{rows}\n\n## Notes\n{notes}"
         )
@@ -441,7 +535,7 @@ class Library:
             body = f"\n# {slug}\n\n## Papers\n\n"
         if re.search(rf"^- {record_id}\b", body, flags=re.MULTILINE):
             return
-        line = f"- {record_id} — {title} ({year or 'n.d.'}) — from {source}\n"
+        line = f"- {record_id} — {flat(title)} ({year or 'n.d.'}) — from {source}\n"
         body = body if body.endswith("\n") else body + "\n"
         write_md(path, meta, body + line)
 
@@ -813,6 +907,16 @@ def cmd_refresh(lib: Library, provider: OpenAlex, args: argparse.Namespace) -> i
                 version = version_of(work)
                 if matches(entry, version, norm_title(work.get("display_name") or "")):
                     add_version(entry, version)
+        # An ID OpenAlex no longer returns (merged, withdrawn) stays as a version: the spec keeps
+        # old IDs. It is marked and no longer counted for venue, citations, or retraction.
+        stored = {v["openalex"]: v for v in stored_versions(body)}
+        for work_id in split_list(meta.get("openalex", "")):
+            if work_id not in entry["openalex"]:
+                old = stored.get(work_id) or {
+                    "openalex": work_id, "kind": "preprint", "doi": "", "arxiv": "", "venue": "",
+                    "venue_type": "", "year": None, "cited_by": 0, "is_retracted": False, "authors": [],
+                }
+                add_version(entry, {**old, "stale": True})
         data = summarize(entry)
         before = (meta.get("venue"), meta.get("is_retracted"))
         extra = {k: meta[k] for k in ("added", "added_by", "source_step", "collections") if k in meta}
@@ -830,34 +934,55 @@ def cmd_refresh(lib: Library, provider: OpenAlex, args: argparse.Namespace) -> i
     return 0
 
 
+def ascii_words(value: str) -> list[str]:
+    text = unicodedata.normalize("NFKD", value or "").encode("ascii", "ignore").decode()
+    return re.findall(r"[a-z0-9]+", text.lower())
+
+
+def key_suffix(number: int) -> str:
+    """1 → a, 26 → z, 27 → aa: never runs out of letters."""
+    letters = ""
+    while number:
+        number, rest = divmod(number - 1, 26)
+        letters = chr(ord("a") + rest) + letters
+    return letters
+
+
 def bibtex_key(meta: dict[str, str], used: set[str]) -> str:
-    first = meta.get("authors", "").split(";")[0].strip()
-    last = norm_title(first.split(" ")[-1] if first else "anon").replace(" ", "") or "anon"
-    word = next((w for w in norm_title(meta.get("title", "")).split() if len(w) > 3), "paper")
-    base = f"{last}{meta.get('year', '')}{word}"
-    key, suffix = base, 1
+    """ASCII only — classic BibTeX rejects other characters in keys."""
+    first = (record_authors(meta) or ["anon"])[0]
+    last = (ascii_words(first) or ["anon"])[-1]
+    word = next((w for w in ascii_words(meta.get("title", "")) if len(w) > 3), "paper")
+    year = meta.get("year", "") if meta.get("year", "").isdigit() else ""
+    base = f"{last}{year}{word}"
+    key, number = base, 0
     while key in used:
-        suffix += 1
-        key = f"{base}{chr(ord('a') + suffix - 2)}"
+        number += 1
+        key = f"{base}{key_suffix(number)}"
     used.add(key)
     return key
 
 
+def tex(value: str) -> str:
+    """Escape TeX specials; braces become commands so every field stays brace-balanced."""
+    return "".join(TEX_SPECIAL.get(c, c) for c in value)
+
+
 def bibtex_entry(meta: dict[str, str], key: str) -> str:
-    names = [n.strip() for n in re.sub(r"\s*\(\+\d+\)$", "", meta.get("authors", "")).split(";") if n.strip()]
+    names = [tex(n) for n in record_authors(meta)]
     author = " and ".join(names + (["others"] if re.search(r"\(\+\d+\)$", meta.get("authors", "")) else []))
-    fields = [("title", "{" + meta.get("title", "") + "}"), ("author", author), ("year", meta.get("year", ""))]
+    fields = [("title", "{" + tex(meta.get("title", "")) + "}"), ("author", author), ("year", meta.get("year", ""))]
     kind = meta.get("venue_type", "other")
     if kind == "journal":
         entry_type = "article"
-        fields.append(("journal", meta.get("venue", "")))
+        fields.append(("journal", tex(meta.get("venue", ""))))
     elif kind == "conference":
         entry_type = "inproceedings"
-        fields.append(("booktitle", meta.get("venue", "")))
+        fields.append(("booktitle", tex(meta.get("venue", ""))))
     else:
         entry_type = "misc"
         if kind != "preprint":
-            fields.append(("howpublished", meta.get("venue", "")))
+            fields.append(("howpublished", tex(meta.get("venue", ""))))
     if meta.get("doi", "none") != "none":
         fields.append(("doi", meta["doi"]))
     if meta.get("arxiv", "none") != "none":

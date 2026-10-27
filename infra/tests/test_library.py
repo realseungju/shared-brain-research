@@ -20,7 +20,8 @@ TRAIL = "2026-10-27-factuality"
 
 def work(work_id: str, title: str, year: int, *, doi: str = "", venue: str = "", venue_type: str = "journal",
          arxiv: str = "", cited_by: int = 0, retracted: bool = False, refs: tuple[str, ...] = (),
-         related: tuple[str, ...] = ()) -> dict:
+         related: tuple[str, ...] = (),
+         authors: tuple[str, ...] = ("Ada Lovelace", "Alan Turing", "Grace Hopper", "Edsger Dijkstra")) -> dict:
     locations = []
     if venue:
         locations.append({"source": {"display_name": venue, "type": venue_type}})
@@ -36,7 +37,7 @@ def work(work_id: str, title: str, year: int, *, doi: str = "", venue: str = "",
         "publication_year": year,
         "cited_by_count": cited_by,
         "is_retracted": retracted,
-        "authorships": [{"author": {"display_name": n}} for n in ("Ada Lovelace", "Alan Turing", "Grace Hopper", "Edsger Dijkstra")],
+        "authorships": [{"author": {"display_name": n}} for n in authors],
         "primary_location": locations[0] if locations else None,
         "locations": locations,
         "referenced_works": [f"https://openalex.org/{r}" for r in refs],
@@ -272,6 +273,104 @@ class LibraryTests(LibraryCase):
         self.assertIn("openalex: W13, W30", record)
         self.assertEqual(self.lint().returncode, 0)
 
+    def save_titled(self, title: str) -> None:
+        self.references_step()
+        number = next(c["n"] for c in self.candidates("step-01") if c["title"] == title)
+        code, _, err = self.run_library("choose", TRAIL, "step-01", "--pick", str(number), "--by", "human", "--save",
+                                        "core", "--agent", "Claude")
+        self.assertEqual(code, 0, err)
+
+    def test_saved_record_is_matched_by_the_same_rule_as_candidates(self) -> None:
+        # Codex review (1): stored records skipped the year rule, so a 2025 paper joined a 2019 record.
+        self.save_titled("Older baseline")
+        lib = library.Library(self.root)
+
+        def candidate(work_id: str, year: int) -> dict:
+            entry = library.new_entry(work(work_id, "Older baseline", year))
+            library.add_version(entry, library.version_of(work(work_id, "Older baseline", year)))
+            return library.summarize(entry)
+
+        self.assertIsNone(lib.find_record(candidate("W99", 2025)))
+        self.assertEqual(lib.find_record(candidate("W98", 2020)), "L0001")
+
+    def test_same_title_different_authors_is_not_merged(self) -> None:
+        # Codex review (2)
+        pool: list[dict] = []
+        library.merge_work(pool, work("W50", "A common title", 2023, venue="Workshop A", authors=("Kim Lee",)), None)
+        library.merge_work(pool, work("W51", "A common title", 2023, venue="Journal B", authors=("Ola Nordmann",)), None)
+        self.assertEqual(len(pool), 2)
+        library.merge_work(pool, work("W52", "A common title", 2023, arxiv="2301.00052", authors=("Kim Lee",)), None)
+        self.assertEqual(sorted(len(e["versions"]) for e in pool), [1, 2])
+
+    def test_work_that_bridges_two_entries_joins_them(self) -> None:
+        # Codex review (3)
+        pool: list[dict] = []
+        library.merge_work(pool, work("W60", "Title one", 2023, doi="10.1/a", venue="J"), "W1")
+        library.merge_work(pool, work("W61", "Title two", 2023, arxiv="2301.00001"), "W2")
+        bridge = work("W62", "Title three", 2023, doi="10.1/a", arxiv="2301.00001")
+        library.merge_work(pool, bridge, None)
+        self.assertEqual(len(pool), 1)
+        self.assertEqual(pool[0]["openalex"], {"W60", "W61", "W62"})
+        self.assertEqual(pool[0]["via"], {"W1", "W2"})
+
+    def test_korean_and_chinese_titles_merge_versions(self) -> None:
+        # Codex review (4): the title key used to be empty for non-Latin titles.
+        for title in ("한국어 연구", "中文研究"):
+            self.assertNotEqual(library.norm_title(title), "")
+            pool: list[dict] = []
+            library.merge_work(pool, work("W70", title, 2023, arxiv="2301.00070"), None)
+            library.merge_work(pool, work("W71", title, 2023, doi="10.1/w71", venue="KCI"), None)
+            self.assertEqual(len(pool), 1, title)
+            self.assertEqual(library.summarize(pool[0])["venue"], "KCI")
+
+    def test_refresh_keeps_ids_openalex_no_longer_returns(self) -> None:
+        # Codex review (5): spec edge case — old IDs stay in versions.
+        self.save_titled("Only on arXiv")
+        self.provider.works["W13"] = work("W200", "Only on arXiv", 2022, arxiv="2201.00001", cited_by=41)
+        code, _, err = self.run_library("refresh", "L0001")
+        self.assertEqual(code, 0, err)
+        meta, body = library.read_md(self.root / "library/papers/L0001.md")
+        self.assertEqual(library.split_list(meta["openalex"]), ["W200", "W13"])
+        self.assertEqual(meta["cited_by"], "41")
+        self.assertIn("| preprint · not returned |", body)
+        self.assertEqual(library.Library(self.root).find_record({"title": "x", "versions": [
+            {"openalex": "W13", "doi": "", "arxiv": "", "year": None}]}), "L0001")
+        self.run_library("refresh", "L0001")
+        self.assertEqual(library.split_list(library.read_md(self.root / "library/papers/L0001.md")[0]["openalex"]),
+                         ["W200", "W13"])
+        self.assertEqual(self.lint().returncode, 0)
+
+    def test_line_breaks_in_metadata_cannot_add_fields(self) -> None:
+        # Codex review (6)
+        self.provider.works["W14"]["authorships"] = [{"author": {"display_name": "Alice\nyear: 1900"}},
+                                                     {"author": {"display_name": "Bob venue: Fake"}}]
+        self.save_titled("Older baseline")
+        meta, _ = library.read_md(self.root / "library/papers/L0001.md")
+        self.assertEqual((meta["year"], meta["venue"]), ("2019", "NeurIPS"))
+        self.assertEqual(meta["authors"], "Alice year: 1900; Bob venue: Fake")
+        self.assertEqual(self.lint().returncode, 0)
+        code, _, err = self.run_library("trail-new", "other", "--question", "q year: 1900", "--seed", "openalex:W1",
+                                        "--agent", "Claude", "--date", "2026-10-27")
+        self.assertEqual(code, 2)
+        self.assertIn("single non-empty line", err)
+
+    def test_bibtex_escapes_tex_specials_and_keys_never_run_out(self) -> None:
+        # Codex review (7)(8)
+        meta = {"title": "A { brace & 50% $cost_", "authors": "Jürgen Müller; 김철수", "year": "2023",
+                "venue": "A&B", "venue_type": "journal", "doi": "10.1/x_y", "arxiv": "none", "is_retracted": "no"}
+        entry = library.bibtex_entry(meta, "k")
+        self.assertIn(r"\textbraceleft{} brace \& 50\% \$cost\_", entry)
+        self.assertIn(r"journal = {A\&B}", entry)
+        self.assertIn("doi = {10.1/x_y}", entry)
+        self.assertEqual(entry.count("{"), entry.count("}"))
+        used: set[str] = set()
+        keys = [library.bibtex_key(meta, used) for _ in range(28)]
+        self.assertEqual((keys[0], keys[1], keys[26], keys[27]), ("muller2023brace", "muller2023bracea",
+                                                                  "muller2023bracez", "muller2023braceaa"))
+        self.assertTrue(all(re.fullmatch(r"[a-z0-9]+", k) for k in keys))
+        self.assertEqual(library.bibtex_key({"authors": "김철수", "title": "한국어 연구", "year": "2023"}, set()),
+                         "anon2023paper")
+
     def test_provider_failure_writes_no_step(self) -> None:
         self.start_trail()
 
@@ -333,6 +432,25 @@ class LibraryLintTests(LibraryCase):
         self.saved_library()
         self.edit(self.root / "library/papers/L0001.md", "is_retracted: no", "is_retracted: yes")
         write(self.root / "research/demo-project/questions.md", "# Questions\n\nPrior work: library:L0001\n")
+        result = self.lint()
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertRegex(result.stdout, re.compile(r"\[WARN\].*retracted paper library:L0001"))
+
+    def test_step_input_must_be_a_candidate_of_an_earlier_step(self) -> None:
+        # Codex review (9)
+        self.saved_library()
+        self.run_library("step", TRAIL, "--from", "step-01", "--direction", "citations", "--agent", "Codex")
+        self.edit(self.step_path("step-02"), "step-01#1", "step-01#999")
+        self.assert_lint_fails("names a candidate that does not exist (step-01#999)")
+        self.edit(self.step_path("step-02"), "step-01#999", "step-02#1")
+        self.assert_lint_fails("is not a candidate of an earlier step of this trail (step-02#1)")
+
+    def test_citing_a_retracted_record_by_path_warns(self) -> None:
+        # Codex review (10)
+        self.saved_library()
+        self.edit(self.root / "library/papers/L0001.md", "is_retracted: no", "is_retracted: yes")
+        write(self.root / "research/demo-project/questions.md",
+              "# Questions\n\n[prior work](../../library/papers/L0001.md)\n")
         result = self.lint()
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertRegex(result.stdout, re.compile(r"\[WARN\].*retracted paper library:L0001"))

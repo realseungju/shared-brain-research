@@ -33,7 +33,7 @@ RECORD_FILE = re.compile(r"^(L\d{4})\.md$")
 TRAIL_DIR = re.compile(rf"^\d{{4}}-\d{{2}}-\d{{2}}-{SLUG}$")
 STEP_FILE = re.compile(r"^(step-(\d{2}))\.md$")
 STEP_REF = re.compile(r"^(step-\d{2})#(\d+)$")
-LIBRARY_REF = re.compile(r"library:(L\d{4})")
+LIBRARY_REF = re.compile(r"(?:library:|library/papers/)(L\d{4})")
 STEP_DIRECTIONS = {"search", "references", "citations", "related"}
 VENUE_TYPES = {"journal", "conference", "other", "preprint"}
 PLACEHOLDERS = {"", "-", "todo", "tbd", "pending", "none", "n/a", "not-verified"}
@@ -288,7 +288,9 @@ def check_claims(root: Path, project_slug: str, path: Path) -> None:
             if evidence_kind not in {"measured", "estimated"}:
                 error(f"supported claim rests on unverified evidence ({claim_id}): {relative}")
             evidence = linked_path(root, fields.get("evidence", ""))
-            if fields.get("evidence", "").strip("`").startswith(("library:", "library/")):
+            if fields.get("evidence", "").strip("`").startswith(("library:", "library/")) or LIBRARY_REF.search(
+                fields.get("evidence", "")
+            ):
                 error(f"supported claim cites a library paper; papers are not experiment evidence ({claim_id}): {relative}")
             elif evidence is None or not evidence.is_file():
                 error(f"supported claim has no evidence path ({claim_id}): {relative}")
@@ -475,6 +477,11 @@ def candidates_digest(candidates: list[dict]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def candidate_count(meta: dict) -> int:
+    value = meta.get("candidates", "")
+    return int(value) if value.isdigit() else 0
+
+
 def check_step(path: Path, trail: str, steps: dict[str, dict], records: dict[str, dict[str, str]], relative: str) -> None:
     meta = steps[path.stem]
     for field in (
@@ -524,8 +531,10 @@ def check_step(path: Path, trail: str, steps: dict[str, dict], records: dict[str
             error(f"step saved into a missing library record ({item}): {relative}")
     for token in list_field(meta.get("inputs", "")):
         ref = STEP_REF.fullmatch(token)
-        if ref and ref.group(1) not in steps:
-            error(f"step input points at a missing step ({token}): {relative}")
+        if ref and (ref.group(1) not in steps or ref.group(1) >= path.stem):
+            error(f"step input is not a candidate of an earlier step of this trail ({token}): {relative}")
+        elif ref and not 1 <= int(ref.group(2)) <= candidate_count(steps[ref.group(1)]):
+            error(f"step input names a candidate that does not exist ({token}): {relative}")
         elif not ref and not re.fullmatch(r"L\d{4}|W\d+(?:\+W\d+)*", token):
             error(f"invalid step input token ({token}): {relative}")
         elif re.fullmatch(r"L\d{4}", token) and token not in records:
