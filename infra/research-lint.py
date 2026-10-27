@@ -479,7 +479,12 @@ def candidates_digest(candidates: list[dict]) -> str:
 
 def candidate_count(meta: dict) -> int:
     value = meta.get("candidates", "")
-    return int(value) if value.isdigit() else 0
+    return int(value) if is_count(value) else 0
+
+
+def is_count(value: str) -> bool:
+    """ASCII digits only: "²".isdigit() is true but int("²") raises."""
+    return bool(re.fullmatch(r"[0-9]+", value or ""))
 
 
 def check_step(path: Path, trail: str, steps: dict[str, dict], records: dict[str, dict[str, str]], relative: str) -> None:
@@ -511,7 +516,7 @@ def check_step(path: Path, trail: str, steps: dict[str, dict], records: dict[str
 
     def numbers(field: str) -> list[int]:
         values = list_field(meta.get(field, ""))
-        if not all(v.isdigit() and 1 <= int(v) <= len(candidates) for v in values):
+        if not all(is_count(v) and 1 <= int(v) <= len(candidates) for v in values):
             error(f"step {field} names a candidate that does not exist: {relative}")
             return []
         return [int(v) for v in values]
@@ -525,7 +530,7 @@ def check_step(path: Path, trail: str, steps: dict[str, dict], records: dict[str
         error(f"step has chosen_by but nothing chosen: {relative}")
     for item in list_field(meta.get("saved", "")):
         number, _, record_id = item.partition("=")
-        if not number.isdigit() or int(number) not in chosen:
+        if not is_count(number) or int(number) not in chosen:
             error(f"step saved a candidate that was not chosen by a human ({item}): {relative}")
         if record_id not in records:
             error(f"step saved into a missing library record ({item}): {relative}")

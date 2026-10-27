@@ -42,6 +42,7 @@ DEFAULT_LIMIT = 25
 CITATIONS_PER_INPUT = 200
 BATCH = 50
 CANDIDATES_HEADING = "## Candidate records"
+AUTHOR_KEYS = 50  # authors compared for identity; display keeps three
 STALE_MARK = " · not returned"
 # Every character str.splitlines() breaks on. A frontmatter value must contain none of them.
 LINE_BREAKS = re.compile("[\n\r\v\f\x1c\x1d\x1e\x85  ]")
@@ -146,9 +147,26 @@ def norm_title(value: str) -> str:
     return re.sub(r"\s+", " ", text).strip().casefold()
 
 
-def surname(name: str) -> str:
-    parts = norm_title(name).split()
-    return parts[-1] if parts else ""
+def name_keys(name: str) -> set[str]:
+    """First and last name tokens, so "Sewon Min", "Min Sewon", and "S. Min" all share "min"."""
+    parts = [p for p in norm_title(name).split() if len(p) > 1]
+    return {parts[0], parts[-1]} if parts else set()
+
+
+def author_keys(work: dict) -> list[str]:
+    """Every author (up to AUTHOR_KEYS), not the three shown: versions often reorder authors.
+    OpenAlex author IDs count too."""
+    keys: set[str] = set()
+    for authorship in (work.get("authorships") or [])[:AUTHOR_KEYS]:
+        author = authorship.get("author") or {}
+        if author.get("id"):
+            keys.add(short_id(author["id"]))
+        keys.update(name_keys(author.get("display_name") or ""))
+    return sorted(keys)
+
+
+def is_count(value: str) -> bool:
+    return bool(re.fullmatch(r"[0-9]+", value or ""))
 
 
 def work_locations(work: dict) -> list[dict]:
@@ -193,7 +211,7 @@ def version_of(work: dict) -> dict:
         "year": work.get("publication_year"),
         "cited_by": work.get("cited_by_count") or 0,
         "is_retracted": bool(work.get("is_retracted")),
-        "authors": [s for s in (surname(n) for n in work_authors(work)[0]) if s],
+        "authors": author_keys(work),
     }
 
 
@@ -258,15 +276,32 @@ def absorb(entry: dict, other: dict) -> None:
         entry["authors"], entry["n_authors"] = other["authors"], other["n_authors"]
 
 
+def shares_id(entry: dict, version: dict) -> bool:
+    return bool(
+        version["openalex"] in entry["openalex"]
+        or (version["doi"] and version["doi"] in entry["dois"])
+        or (version["arxiv"] and version["arxiv"] in entry["arxivs"])
+    )
+
+
+def dois_conflict(entry: dict, other: dict) -> bool:
+    return bool(entry["dois"] and other["dois"] and entry["dois"].isdisjoint(other["dois"]))
+
+
 def merge_work(pool: list[dict], work: dict, via: str | None, rank: int | None = None) -> dict:
     version = version_of(work)
     title_key = norm_title(work.get("display_name") or work.get("title") or "")
     found = [e for e in pool if matches(e, version, title_key)]
+    found.sort(key=lambda e: not shares_id(e, version))  # an ID match outranks a title match
     if found:
         entry = found[0]
-        for other in found[1:]:  # this work shows the entries are one paper
+        joined = []
+        for other in found[1:]:  # this work shows the entries are one paper ...
+            if dois_conflict(entry, other):
+                continue  # ... unless they carry different published DOIs: then they stay two
             absorb(entry, other)
-        pool[:] = [e for e in pool if not any(e is other for other in found[1:])]
+            joined.append(other)
+        pool[:] = [e for e in pool if not any(e is other for other in joined)]
     else:
         entry = new_entry(work)
         pool.append(entry)
@@ -421,8 +456,8 @@ def stored_versions(body: str) -> list[dict]:
             "arxiv": ref[6:] if ref.startswith("arxiv:") else "",
             "venue": "" if cells[1] == "-" or (kind == "preprint" and cells[1] == "arXiv") else cells[1],
             "venue_type": "",
-            "year": int(cells[2]) if cells[2].isdigit() else None,
-            "cited_by": int(cells[5]) if cells[5].isdigit() else 0,
+            "year": int(cells[2]) if is_count(cells[2]) else None,
+            "cited_by": int(cells[5]) if is_count(cells[5]) else 0,
             "is_retracted": False,
             "authors": [],
             "stale": STALE_MARK in cells[0],
@@ -461,7 +496,7 @@ class Library:
         for path in sorted(self.papers.glob("L*.md")):
             meta, body = read_md(path)
             versions = stored_versions(body)
-            if not versions and meta.get("year", "").isdigit():
+            if not versions and is_count(meta.get("year", "")):
                 versions = [{"year": int(meta["year"])}]
             dois = {v["doi"] for v in versions if v.get("doi")}
             arxivs = {v["arxiv"] for v in versions if v.get("arxiv")}
@@ -474,7 +509,7 @@ class Library:
                 "openalex": set(split_list(meta.get("openalex", ""))),
                 "dois": dois,
                 "arxivs": arxivs,
-                "surnames": {s for s in (surname(n) for n in record_authors(meta)) if s},
+                "surnames": set().union(*(name_keys(n) for n in record_authors(meta))),
                 "versions": versions,
             }))
         return entries
@@ -921,7 +956,7 @@ def cmd_refresh(lib: Library, provider: OpenAlex, args: argparse.Namespace) -> i
         before = (meta.get("venue"), meta.get("is_retracted"))
         extra = {k: meta[k] for k in ("added", "added_by", "source_step", "collections") if k in meta}
         extra["refreshed"] = date.today().isoformat()
-        notes = body.split("## Notes", 1)[1] if "## Notes" in body else "\n"
+        notes = body.split("## Notes", 1)[1].removeprefix("\n") if "## Notes" in body else "\n"
         lib.write_record(record_id, data, extra, notes)
         after = (data["venue"], "yes" if data["is_retracted"] else "no")
         change = []
@@ -953,7 +988,7 @@ def bibtex_key(meta: dict[str, str], used: set[str]) -> str:
     first = (record_authors(meta) or ["anon"])[0]
     last = (ascii_words(first) or ["anon"])[-1]
     word = next((w for w in ascii_words(meta.get("title", "")) if len(w) > 3), "paper")
-    year = meta.get("year", "") if meta.get("year", "").isdigit() else ""
+    year = meta.get("year", "") if is_count(meta.get("year", "")) else ""
     base = f"{last}{year}{word}"
     key, number = base, 0
     while key in used:

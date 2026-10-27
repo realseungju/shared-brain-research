@@ -371,6 +371,41 @@ class LibraryTests(LibraryCase):
         self.assertEqual(library.bibtex_key({"authors": "김철수", "title": "한국어 연구", "year": "2023"}, set()),
                          "anon2023paper")
 
+    def test_title_bridge_does_not_join_two_published_dois(self) -> None:
+        # Codex re-review: a preprint matching two same-title papers by title joined their DOIs.
+        pool: list[dict] = []
+        for w in (work("W80", "Same title", 2023, doi="10.1/a", venue="J", authors=("Alice Smith",)),
+                  work("W81", "Same title", 2023, doi="10.1/b", venue="K", authors=("Alice Smith",)),
+                  work("W82", "Same title", 2023, arxiv="2301.00403", authors=("Alice Smith",))):
+            library.merge_work(pool, w, None)
+        self.assertEqual(sorted(sorted(e["openalex"]) for e in pool), [["W80", "W82"], ["W81"]])
+
+    def test_reversed_name_order_and_reordered_authors_still_join(self) -> None:
+        # Codex re-review: surname = last token missed "Min Sewon"; comparing three authors missed reordering.
+        for arxiv_authors, published_authors in (
+            (("Min Sewon",), ("Sewon Min",)),
+            (("Al Alpha", "Bo Beta", "Cy Gamma", "Di Delta", "Ed Epsilon", "Fa Zeta"),
+             ("Di Delta", "Ed Epsilon", "Fa Zeta", "Al Alpha", "Bo Beta", "Cy Gamma")),
+        ):
+            pool: list[dict] = []
+            library.merge_work(pool, work("W90", "Joined paper", 2023, arxiv="2301.00090", authors=arxiv_authors), None)
+            library.merge_work(pool, work("W91", "Joined paper", 2023, doi="10.1/w91", venue="ACL",
+                                          venue_type="conference", authors=published_authors), None)
+            self.assertEqual(len(pool), 1, arxiv_authors)
+            self.provider.works["W90"] = work("W90", "Joined paper", 2023, arxiv="2301.00090", authors=arxiv_authors)
+            self.provider.works["W91"] = work("W91", "Joined paper", 2023, doi="10.1/w91", venue="ACL",
+                                              venue_type="conference", authors=published_authors)
+            found = library.with_published_versions(self.provider, ["W90"], {"W90": self.provider.works["W90"]})
+            self.assertEqual(found, ["W90", "W91"], arxiv_authors)
+
+    def test_refresh_does_not_grow_the_notes_section(self) -> None:
+        self.save_titled("Older baseline")
+        path = self.root / "library/papers/L0001.md"
+        before = path.read_text(encoding="utf-8").split("## Notes", 1)[1]
+        self.run_library("refresh", "L0001")
+        self.run_library("refresh", "L0001")
+        self.assertEqual(path.read_text(encoding="utf-8").split("## Notes", 1)[1], before)
+
     def test_provider_failure_writes_no_step(self) -> None:
         self.start_trail()
 
@@ -444,6 +479,18 @@ class LibraryLintTests(LibraryCase):
         self.assert_lint_fails("names a candidate that does not exist (step-01#999)")
         self.edit(self.step_path("step-02"), "step-01#999", "step-02#1")
         self.assert_lint_fails("is not a candidate of an earlier step of this trail (step-02#1)")
+
+    def test_non_ascii_digit_count_is_an_error_not_a_crash(self) -> None:
+        # Codex re-review: "²".isdigit() is true and int("²") raised inside lint.
+        self.saved_library()
+        self.run_library("step", TRAIL, "--from", "step-01", "--direction", "citations", "--agent", "Codex")
+        self.edit(self.step_path("step-01"), "candidates: ", "candidates: ²")
+        self.edit(self.step_path("step-01"), "proposed: none", "proposed: ²")
+        result = self.lint()
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+        self.assertIn("names a candidate that does not exist (step-01#1)", result.stdout)
+        self.assertIn("step proposed names a candidate that does not exist", result.stdout)
 
     def test_citing_a_retracted_record_by_path_warns(self) -> None:
         # Codex review (10)
