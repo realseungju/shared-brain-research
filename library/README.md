@@ -1,0 +1,84 @@
+# Library
+
+논문을 찾고, **사람이 고른 것만** 보관한다. **Tier 2**이므로 시작할 때 읽지 않는다. 지금
+이어 갈 trail만 task나 session hook이 가리킨다.
+
+두 층으로 나뉜다. Research Rabbit의 Library(보관)와 Search(탐색)를 나눈 구조를 본떴고,
+탐색 단계가 Git 파일로 남아 다른 AI가 어느 단계에서든 이어 탐색할 수 있다는 점이 다르다.
+
+| 층 | 위치 | 담는 것 |
+|---|---|---|
+| 도서관 | `papers/L0001.md` | 논문 1편 = 레코드 1개. preprint·게재본을 한 레코드로 묶는다 |
+| 도서관 | `collections/{slug}.md` | 프로젝트·주제별 레코드 목록 |
+| 탐색 기록 | `trails/YYYY-MM-DD-slug/` | 질문 하나의 탐색. `trail.md` + 검색 1회마다 `step-NN.md` |
+
+## 흐름
+
+```text
+trail-new (질문 + 시작 논문)
+→ step: 입력 논문 × 방향 → 후보 목록       (references · citations · related · search)
+→ choose --by human: 사람이 고름            (AI가 고르면 --by ai → proposed 로만 남음)
+→ choose --save: 고른 것만 도서관 레코드가 됨
+→ step --from step-NN: 그 단계의 입력 + 고른 것이 다음 입력. 이전 단계에서 다시 갈라져도 뒤 단계는 지우지 않는다
+```
+
+```sh
+python infra/library.py trail-new factuality --question "LLM 사실성은 어떻게 재나?" \
+  --seed arxiv:2305.14251 --seed doi:10.18653/v1/2023.emnlp-main.557 --agent Claude
+python infra/library.py step 2026-10-27-factuality --direction references --agent Claude
+python infra/library.py choose 2026-10-27-factuality step-01 --pick 2,10 --by human \
+  --save factuality --agent Claude
+python infra/library.py step 2026-10-27-factuality --from step-01 --direction citations \
+  --year 2024- --agent Codex
+python infra/library.py show 2026-10-27-factuality
+python infra/library.py export factuality --bibtex --out refs.bib
+python infra/library.py refresh
+```
+
+사용자는 명령을 직접 치지 않는다. 「이 두 논문에서 출발해 참고문헌을 넓혀 줘」처럼 말하면
+에이전트가 실행하고, 후보 표를 보여 준 뒤 **사람이 번호를 고른다**.
+
+## 판본 — 게재본을 먼저 보인다
+
+OpenAlex는 같은 논문의 arXiv 판과 게재본을 따로 두는 일이 많다. 실측(2026-10-27):
+FActScore arXiv 판은 참고문헌 0개·피인용 14건, EMNLP 게재본은 참고문헌 46개·피인용 400건이었다.
+
+- 시작 논문이 preprint뿐이면 정확히 같은 제목의 게재본을 찾아 함께 쓴다(`W…+W…`).
+- 후보는 판본을 합쳐 한 줄로 보이고, 피인용은 판본 합계다.
+- `venue`는 게재본 기준이다. 게재본을 못 찾으면 `preprint-only`로 드러낸다.
+- 같은 제목이라도 서로 다른 게재 DOI가 있거나 연도가 3년 이상 떨어지면 다른 논문으로 둔다.
+
+## 후보 정렬과 필터
+
+- 정렬: 입력 논문 몇 편과 연결됐는지(`links`) → 피인용 → 연도. search는 OpenAlex 순서를 따른다.
+- 철회 논문은 기본으로 뺀다. 숨기지 않고 `excluded: retracted=N`에 개수를 남긴다.
+- `--year`, `--exclude-preprint-only`, `--limit`. 잘린 개수는 `beyond-limit=N`으로 남는다.
+- citations는 입력마다 피인용 많은 순 상위 200편만 가져온다. 최근 논문이 빠질 수 있다 — `filters`에 적힌다.
+
+## 지켜지는 것 (research-lint)
+
+- 단계 파일의 후보 목록은 검색 뒤 고쳐 쓸 수 없다 (`candidates_sha256`).
+- `chosen`은 `chosen_by: human`일 때만. `saved`는 `chosen` 안에서만.
+- 레코드는 자기 `source_step`의 `saved`에 있어야 한다 — 사람이 고르지 않은 레코드는 없다.
+- 레코드와 컬렉션은 서로를 가리켜야 한다.
+- 도서관 논문은 **실험 근거가 아니다.** `supported` claim의 evidence로 `library:`를 쓰면 실패한다.
+- 철회된 레코드를 `library:L0001`로 가리키는 research 문서는 WARN으로 알린다.
+
+`chosen_by: human`은 `human_approved`와 같은 출처 기록이지 신원 인증이 아니다.
+
+## OpenAlex 이용 조건
+
+2026-02-13부터 OpenAlex는 API 키 기준 하루 예산제다. 키 없이도 되지만 예산이 작고, 무료 키는
+10배다. ID 조회는 무료, 목록·필터는 1,000건당 $0.10, 검색은 1,000건당 $1이다.
+
+- 키는 사람이 환경변수 `OPENALEX_API_KEY`에 넣는다. 파일·커밋·프롬프트에 쓰지 않는다.
+- `OPENALEX_MAILTO`는 선택이다.
+- 한도 초과·네트워크 실패면 **단계를 쓰지 않고** 실패를 보고한다(종료 코드 3).
+
+## 알려진 한계
+
+- OpenAlex 참고문헌 연결에는 잡음이 있다. 실데이터에서 주제와 무관한 고피인용 논문이 후보에
+  섞였다. 사람이 고르는 단계가 그래서 있다.
+- `related`는 OpenAlex `related_works`다. 임베딩 유사도는 쓰지 않는다.
+- 저자 방향, Zotero 동기화, 새 논문 알림, 인용 지도 화면은 아직 없다.
+- PDF 원문 확보와 인용문 검증은 범위 밖이다.

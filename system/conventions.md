@@ -144,6 +144,38 @@ instead. A meeting reaches `status: closed` only when every feedback item is `re
 it. Lint checks field and state consistency. Whether a human really approved is established
 by Git commit and PR review history, or by branch protection.
 
+## Library and trails
+
+`infra/library.py` writes every library file and `infra/research-lint.py` checks them.
+Do not create records or steps by hand. The flow and limits are in `library/README.md`.
+
+Record frontmatter (`library/papers/L0001.md`):
+
+| Field | Value |
+|---|---|
+| `id` | `L` + four digits, identical to the filename |
+| `venue` | The published venue, or `preprint-only` |
+| `venue_type` | `journal` \| `conference` \| `other` \| `preprint` — `preprint` exactly when `venue` is `preprint-only` |
+| `openalex` | Every OpenAlex work merged into this record |
+| `is_retracted` | `yes` \| `no` |
+| `source_step` | `{trail}/{step}` whose `saved` lists this record |
+| `collections` | Collection slugs; each collection file must list the record back |
+
+Step frontmatter (`library/trails/{YYYY-MM-DD-slug}/step-NN.md`):
+
+| Field | Value |
+|---|---|
+| `parent` | An earlier step of the same trail, or `none` |
+| `direction` | `search` \| `references` \| `citations` \| `related` |
+| `inputs` | `L0001`, `W…` (`W…+W…` for one paper's versions), or `step-NN#k` |
+| `excluded` | Counts per reason: `retracted`, `year`, `preprint-only`, `input`, `beyond-limit` |
+| `candidates_sha256` | Digest of the candidate records — editing candidates fails lint |
+| `proposed` | Numbers an AI suggested. Never saved |
+| `chosen` / `chosen_by` | Numbers a human picked; `chosen_by: human` whenever `chosen` is set |
+| `saved` | `n=L0001` pairs, only for chosen numbers |
+
+A library paper is not experiment evidence: a `supported` claim cannot point at `library:`.
+
 ## Commits
 
 Conventional Commits are recommended.

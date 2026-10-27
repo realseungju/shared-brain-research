@@ -24,7 +24,8 @@ Owned by this distribution:
 
 - The `research/` project, experiment, and claim contract
 - The `feedback/` meeting contract
-- `infra/new-experiment.py`, `infra/new-meeting.py`, `infra/research-lint.py`
+- The `library/` paper library and exploration-trail contract
+- `infra/new-experiment.py`, `infra/new-meeting.py`, `infra/research-lint.py`, `infra/library.py`
 - Research examples, the cross-agent demo, and the platform compatibility document
 
 Upstream changes are never applied automatically. Review them, take only what the common
