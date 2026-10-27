@@ -148,9 +148,13 @@ def norm_title(value: str) -> str:
 
 
 def name_keys(name: str) -> set[str]:
-    """First and last name tokens, so "Sewon Min", "Min Sewon", and "S. Min" all share "min"."""
-    parts = [p for p in norm_title(name).split() if len(p) > 1]
-    return {parts[0], parts[-1]} if parts else set()
+    """A family name with the other end's initial, read both ways: "Sewon Min", "Min Sewon",
+    and "S. Min" share "min|s"; "Wei Zhang" and "Wei Wang" share nothing."""
+    parts = norm_title(name).split()
+    if len(parts) < 2:
+        return {f"{parts[0]}|"} if parts else set()
+    first, last = parts[0], parts[-1]
+    return {f"{last}|{first[0]}", f"{first}|{last[0]}"}
 
 
 def author_keys(work: dict) -> list[str]:
@@ -292,7 +296,12 @@ def merge_work(pool: list[dict], work: dict, via: str | None, rank: int | None =
     version = version_of(work)
     title_key = norm_title(work.get("display_name") or work.get("title") or "")
     found = [e for e in pool if matches(e, version, title_key)]
-    found.sort(key=lambda e: not shares_id(e, version))  # an ID match outranks a title match
+    by_id = [e for e in found if shares_id(e, version)]
+    by_title = [e for e in found if not shares_id(e, version)]
+    if not by_id and any(dois_conflict(a, b) for i, a in enumerate(by_title) for b in by_title[i + 1:]):
+        found = []  # one title, two published papers, nothing to say which: keep this work apart
+    else:
+        found = by_id + by_title  # an ID match outranks a title match
     if found:
         entry = found[0]
         joined = []

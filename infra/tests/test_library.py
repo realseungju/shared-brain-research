@@ -373,12 +373,26 @@ class LibraryTests(LibraryCase):
 
     def test_title_bridge_does_not_join_two_published_dois(self) -> None:
         # Codex re-review: a preprint matching two same-title papers by title joined their DOIs.
-        pool: list[dict] = []
-        for w in (work("W80", "Same title", 2023, doi="10.1/a", venue="J", authors=("Alice Smith",)),
-                  work("W81", "Same title", 2023, doi="10.1/b", venue="K", authors=("Alice Smith",)),
-                  work("W82", "Same title", 2023, arxiv="2301.00403", authors=("Alice Smith",))):
-            library.merge_work(pool, w, None)
-        self.assertEqual(sorted(sorted(e["openalex"]) for e in pool), [["W80", "W82"], ["W81"]])
+        # Third check: it then followed input order. Ambiguous, so it stays apart in any order.
+        works = {
+            "W80": work("W80", "Same title", 2023, doi="10.1/a", venue="J", authors=("Alice Smith",)),
+            "W81": work("W81", "Same title", 2023, doi="10.1/b", venue="K", authors=("Alice Smith",)),
+            "W82": work("W82", "Same title", 2023, arxiv="2301.00403", authors=("Alice Smith",)),
+        }
+        for order in (("W80", "W81", "W82"), ("W81", "W80", "W82")):
+            pool: list[dict] = []
+            for work_id in order:
+                library.merge_work(pool, works[work_id], None)
+            self.assertEqual(sorted(sorted(e["openalex"]) for e in pool), [["W80"], ["W81"], ["W82"]], order)
+
+    def test_shared_given_name_alone_is_not_the_same_author(self) -> None:
+        # Codex third check: first-token keys made "Wei Zhang" and "Wei Wang" one author.
+        for one, other in (("Wei Zhang", "Wei Wang"), ("Li Chen", "Li Zhao"), ("David Smith", "David Jones")):
+            pool: list[dict] = []
+            library.merge_work(pool, work("W95", "Common title", 2023, arxiv="2301.00095", authors=(one,)), None)
+            library.merge_work(pool, work("W96", "Common title", 2023, doi="10.1/w96", venue="J", authors=(other,)), None)
+            self.assertEqual(len(pool), 2, (one, other))
+        self.assertTrue(library.name_keys("S. Min") & library.name_keys("Sewon Min") & library.name_keys("Min Sewon"))
 
     def test_reversed_name_order_and_reordered_authors_still_join(self) -> None:
         # Codex re-review: surname = last token missed "Min Sewon"; comparing three authors missed reordering.
