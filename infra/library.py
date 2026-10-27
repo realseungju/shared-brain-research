@@ -524,9 +524,13 @@ class Library:
         return entries
 
     def find_record(self, candidate: dict) -> str | None:
+        """A candidate read from a step file may carry author keys in an older format; the
+        displayed author names are re-keyed so the title rule still applies."""
         title_key = norm_title(candidate["title"])
+        shown = set().union(*(name_keys(n) for n in candidate.get("authors") or []))
+        versions = [{**v, "authors": sorted(set(v.get("authors") or []) | shown)} for v in candidate["versions"]]
         for record_id, entry in self.record_entries():
-            for version in candidate["versions"]:
+            for version in versions:
                 if matches(entry, version, title_key):
                     return record_id
         return None

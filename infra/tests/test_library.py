@@ -385,6 +385,15 @@ class LibraryTests(LibraryCase):
                 library.merge_work(pool, works[work_id], None)
             self.assertEqual(sorted(sorted(e["openalex"]) for e in pool), [["W80"], ["W81"], ["W82"]], order)
 
+    def test_step_written_with_older_author_keys_still_finds_the_record(self) -> None:
+        # Codex fourth check: a candidate whose versions carry old-format keys missed L0001.
+        self.save_titled("Older baseline")
+        candidate = library.summarize((lambda e: (library.add_version(e, library.version_of(
+            work("W900", "Older baseline", 2019))), e)[1])(library.new_entry(work("W900", "Older baseline", 2019))))
+        for version in candidate["versions"]:
+            version["authors"] = ["lovelace", "turing", "hopper"]  # surname-only keys of an earlier commit
+        self.assertEqual(library.Library(self.root).find_record(candidate), "L0001")
+
     def test_shared_given_name_alone_is_not_the_same_author(self) -> None:
         # Codex third check: first-token keys made "Wei Zhang" and "Wei Wang" one author.
         for one, other in (("Wei Zhang", "Wei Wang"), ("Li Chen", "Li Zhao"), ("David Smith", "David Jones")):
