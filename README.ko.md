@@ -6,7 +6,7 @@
 
 English: [README.md](README.md)
 
-Shared Brain Research는 저장소를 Claude Code·Hermes·Orca·Codex CLI 같은 AI의 지속 가능한
+Shared Brain Research는 저장소를 Claude Code·Hermes·Codex CLI 같은 AI의 지속 가능한
 작업 기억으로 만듭니다. 연구 질문, 실험 조건, 근거, 주장, 미팅 피드백, task, session 인계를
 평문 Markdown으로 관리하고, 근거 없는 상태 변경은 lint로 거부합니다.
 
@@ -44,7 +44,7 @@ Shared Brain Research는 저장소를 Claude Code·Hermes·Orca·Codex CLI 같�
 > 갱신한 다음 첫 연구 질문·가설과 baseline 실험 계획을 만들어줘. claim이나 미팅 feedback을
 > accepted로 바꾸기 전에는 나에게 승인받아.
 
-4. 같은 저장소를 Claude Code·Hermes·Orca·Codex CLI 또는 다른 AI에서 열어 이어갑니다.
+4. 같은 저장소를 Claude Code·Hermes·Codex CLI 또는 다른 AI에서 열어 이어갑니다.
    다른 기기나 동료에게 상태를 넘길 때 commit·push를 요청합니다.
 
 아래 Python 명령은 보통 **사용자가 직접 입력하지 않습니다.** AI가 요청을 수행하면서
@@ -165,7 +165,7 @@ stub이라 지원 플랫폼마다 같은 시작 계약을 사용합니다.
 - redacted 기본 미팅 기록과 accept/reject/defer/validate 상태
 - 이어 갈 수 있는 탐색 기록·판본 병합·철회 필터·BibTeX 내보내기가 있는 논문 도서관
 - 교차 AI task·session 인계
-- Claude Code·Hermes·Codex CLI·Orca·Gemini·Copilot 진입점
+- Claude Code·Hermes·Codex CLI·Gemini·Copilot 진입점
 - task·session·experiment·meeting 생성기
 - pre-commit·GitHub Actions의 `research-lint`
 - 테스트되는 교차 AI 데모 fixture
@@ -184,7 +184,7 @@ provenance가 이 배포판의 제품 범위입니다.
 
 ## 플랫폼 호환성
 
-Claude Code·Hermes·Codex CLI·Orca의 저장소 계약과 설치된 CLI 동작을 확인했습니다.
+Claude Code·Hermes·Codex CLI의 저장소 계약과 설치된 CLI 동작을 확인했습니다.
 모델 품질 benchmark가 아닌 구조적 호환성 확인입니다. 자세한 내용은
 [`docs/platform-compatibility.md`](docs/platform-compatibility.md)에 있습니다.
 

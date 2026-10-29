@@ -7,7 +7,6 @@
 | Claude Code | 2026-10-29 데스크톱 앱에서 이 저장소로 도서관 기능 개발·검증 | 루트 `CLAUDE.md` | 실사용 확인 |
 | Codex CLI 0.164.0 | 2026-10-29 `codex --version`, 맥락 없이 도서관 trail을 이어 탐색(아래) | 루트 `AGENTS.md` | 실사용 확인 |
 | Hermes Agent 0.22.5 | 2026-10-29 `hermes --version` | cwd의 `AGENTS.md`·`CLAUDE.md` 로드 | 버전 확인 (0.17.0에서 로컬 코드 확인) |
-| Orca CLI | 2026-07-28 `orca --help`의 existing-folder·repo·worktree 명령 | 선택 agent에 저장소/worktree cwd 전달 | CLI 확인 (이후 재확인 안 함) |
 
 **교차 에이전트 실사용 (2026-10-29):** Claude Code가 만든 도서관 trail을 Codex가 이전 대화 없이
 파일만 읽고 `step-02`에서 이어 탐색했다. Codex가 파악한 단계별 입력·방향·제안이 실제와 같았고,
@@ -18,7 +17,7 @@
 
 이 표는 실행 파일·작업 디렉터리·진입 파일 계약과 위 실사용을 확인한 결과다. 모델 응답 품질이나
 자동 준수율 benchmark가 아니다. 직접 확인하려면 Claude Code에서 session을 닫고,
-Orca의 같은 project/worktree에서 Hermes를 시작해 `examples/cross-agent-demo/` 절차를 확인한다.
+같은 저장소에서 Hermes를 시작해 `examples/cross-agent-demo/` 절차를 확인한다.
 
 ## 공통 사용법
 
