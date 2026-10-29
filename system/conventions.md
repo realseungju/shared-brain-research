@@ -168,11 +168,15 @@ Step frontmatter (`library/trails/{YYYY-MM-DD-slug}/step-NN.md`):
 | `parent` | An earlier step of the same trail, or `none` |
 | `direction` | `search` \| `references` \| `citations` \| `related` |
 | `inputs` | `L0001`, `W…` (`W…+W…` for one paper's versions), or `step-NN#k` |
-| `excluded` | Counts per reason: `retracted`, `year`, `preprint-only`, `input`, `beyond-limit` |
+| `excluded` | Counts per reason: `retracted`, `year`, `preprint-only`, `input` (an input or another version of it), `beyond-limit` |
+| `supplement` | References steps: what Crossref and Semantic Scholar listed, what they added, and any source that failed. `none` otherwise |
 | `candidates_sha256` | Digest of the candidate records — editing candidates fails lint |
 | `proposed` | Numbers an AI suggested. Never saved |
 | `chosen` / `chosen_by` | Numbers a human picked; `chosen_by: human` whenever `chosen` is set |
 | `saved` | `n=L0001` pairs, only for chosen numbers |
+
+A references candidate also carries `found_by` (which reference lists named it) and `after_input`
+(dated more than a year after the paper citing it — a wrong link or a wrong year, shown as `⚠`).
 
 A library paper is not experiment evidence: a `supported` claim cannot point at `library:`.
 

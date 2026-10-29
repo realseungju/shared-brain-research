@@ -49,7 +49,8 @@ FActScore arXiv 판은 참고문헌 0개·피인용 14건, EMNLP 게재본은 �
 - 제목만으로 합치려면 저자 한 명 이상이 겹쳐야 한다. 저자 전체(최대 50명)를 OpenAlex 저자 ID, 또는 성+다른 쪽 끝의
   머리글자(앞뒤 양방향)로 비교한다. `Sewon Min`·`Min Sewon`·`S. Min`은 같은 사람으로, `Wei Zhang`·`Wei Wang`은
   다른 사람으로 본다. 같은 제목이라도 저자가 안 겹치거나,
-  서로 다른 게재 DOI가 있거나, 연도가 3년 이상 떨어지면 다른 논문으로 둔다. 이미 보관한 레코드도 같은 규칙으로 찾는다
+  서로 다른 게재 DOI가 있거나, 연도가 3년 이상 떨어지면 다른 논문으로 둔다. preprint 서버·워킹페이퍼(bioRxiv·SSRN·NBER)가
+  붙인 DOI는 「다른 게재 DOI」로 치지 않는다 — 같은 논문의 판본이다. 이미 보관한 레코드도 같은 규칙으로 찾는다
   (레코드 쪽은 저장된 앞 3명 이름만 쓴다).
 - 제목 비교는 한글·한자 등 모든 문자를 남긴다. 악센트만 지운다.
 - 같은 제목의 preprint 하나가 서로 다른 게재 DOI를 가진 두 논문에 맞으면 어느 쪽에도 붙이지 않고 따로 둔다.
@@ -63,6 +64,38 @@ FActScore arXiv 판은 참고문헌 0개·피인용 14건, EMNLP 게재본은 �
 - 철회 논문은 기본으로 뺀다. 숨기지 않고 `excluded: retracted=N`에 개수를 남긴다.
 - `--year`, `--exclude-preprint-only`, `--limit`. 잘린 개수는 `beyond-limit=N`으로 남는다.
 - citations는 입력마다 피인용 많은 순 상위 200편만 가져온다. 최근 논문이 빠질 수 있다 — `filters`에 적힌다.
+  `--recent`를 주면 최신순 200편을 가져와 최신순으로 보인다.
+- 입력 논문 자신과 **그 다른 판본**(같은 제목·겹치는 저자)은 후보에서 빼고 `input=N`으로 센다.
+  실측(2026-10-29): QJE의 「Generative AI at Work」가 자기 NBER 워킹페이퍼를 참고문헌으로 달고 있었다.
+- 인용한 논문보다 1년 넘게 늦은 참고문헌은 빼지 않고 연도 옆에 `⚠`를 붙인다(`after_input`).
+  잘못된 연결일 수도, 잘못된 연도일 수도 있다. 실측(2026-10-29): AlphaFold(2021) 참고문헌에 2024년 논문이
+  붙은 것은 연결 오류, 「Attention Is All You Need」가 2025년으로 적힌 것은 연도 오류였다.
+
+## 참고문헌 보완 — Crossref·Semantic Scholar
+
+OpenAlex 참고문헌 목록에는 빠진 것이 있다. 실측(2026-10-29): FActScore(EMNLP)의 OpenAlex 목록에는
+FEVER·GPT-3·BERTScore가 없었다. 그래서 `references` 단계는 두 목록에 더 묻는다.
+
+| 출처 | 아는 것 | 모르는 것 |
+|---|---|---|
+| Crossref | 출판사가 등록한 참고문헌(게재 DOI가 있어야 함) | ACL Anthology처럼 등록하지 않은 곳, DOI 없는 항목 |
+| Semantic Scholar | 컴퓨터과학·preprint에 강함. DOI·arXiv ID로 못 찾으면 **정확히 같은 제목**으로 찾는다 | 키 없이 쓰면 요청 제한(429)이 잦다 |
+
+- 두 목록이 DOI·arXiv ID로 이름 댄 논문 중 OpenAlex 목록에 없는 것만 OpenAlex에서 다시 찾아 후보에 더한다.
+  OpenAlex에 없으면 더하지 않고 `not found in OpenAlex`로 센다. ID 없는 항목은 추측하지 않고 `without DOI`로 센다.
+- 후보마다 `found_by`에 어느 목록이 찾았는지 남는다. 단계의 `supplement`에 출처별 개수와 실패가 적힌다.
+- 보조 출처가 실패해도 단계는 쓴다(OpenAlex 실패만 단계를 막는다). 실패는 `supplement`에 `unavailable`로 남는다.
+- 요청 제한(429)은 2·5·10초 쉬고 다시 시도한다.
+- `--openalex-only`를 주면 보조 출처에 묻지 않는다.
+
+같은 4편으로 Research Rabbit과 견준 결과(2026-10-29, 제목 앞 8단어 기준, 중복 제거 후 겹친 수):
+
+| 시작 논문 | Research Rabbit | 보완 전 겹침 | 보완 후 겹침 |
+|---|---|---|---|
+| FActScore | 59 | 41 | 56 |
+| AlphaFold | 87 | 77 | 79 |
+| GraphCast | 27 | 24 | 25 |
+| Generative AI at Work | 77 | 56 | 65 |
 
 ## 지켜지는 것 (research-lint)
 
@@ -76,20 +109,24 @@ FActScore arXiv 판은 참고문헌 0개·피인용 14건, EMNLP 게재본은 �
 
 `chosen_by: human`은 `human_approved`와 같은 출처 기록이지 신원 인증이 아니다.
 
-## OpenAlex 이용 조건
+## 이용 조건
 
 2026-02-13부터 OpenAlex는 API 키 기준 하루 예산제다. 키 없이도 되지만 예산이 작고, 무료 키는
 10배다. ID 조회는 무료, 목록·필터는 1,000건당 $0.10, 검색은 1,000건당 $1이다.
 
 - 키는 사람이 환경변수 `OPENALEX_API_KEY`에 넣는다. 파일·커밋·프롬프트에 쓰지 않는다.
-- `OPENALEX_MAILTO`는 선택이다.
+- `OPENALEX_MAILTO`는 선택이다. Crossref에도 같은 주소로 연락처를 남긴다.
+- Semantic Scholar 키는 `SEMANTIC_SCHOLAR_API_KEY`(선택). 없으면 요청 제한이 잦다.
+- Crossref는 키가 없다.
 - 한도 초과·네트워크 실패면 **단계를 쓰지 않고** 실패를 보고한다(종료 코드 3).
 
 ## 알려진 한계
 
 - OpenAlex 참고문헌 연결에는 잡음이 있다. 실데이터에서 주제와 무관한 고피인용 논문이 후보에
   섞였다. 사람이 고르는 단계가 그래서 있다.
-- `related`는 OpenAlex `related_works`다. 임베딩 유사도는 쓰지 않는다.
+- `related`는 OpenAlex `related_works`다. 임베딩 유사도는 쓰지 않는다. 주제가 같은 최근 후속 연구가 주로 나온다.
+  Research Rabbit의 Similar는 함께 자주 인용되는 논문(고전·도구 논문 포함)을 보여 준다 — 같은 이름의 다른 기능이다.
+  2026-10-29 비교에서 4편 모두 겹침이 0~1편이었다. 함께 인용 방향은 아직 없다.
 - 저자 방향, Zotero 동기화, 새 논문 알림, 인용 지도 화면은 아직 없다.
 - 문헌 유형(논문·책·데이터셋 등) 필터는 넣지 않는다(2026-10-27 결정). 사람이 후보 표를 보고 고른다.
 - 저자 정보가 없는 판본은 제목으로 합치지 않는다. 잘못 합치는 것보다 두 줄로 보이는 편이 낫다.

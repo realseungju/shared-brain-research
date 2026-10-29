@@ -80,9 +80,16 @@ class FakeOpenAlex:
         self.calls += 1
         return [self.works[i] for i in ids if i in self.works]
 
-    def citing(self, work_id: str, limit: int) -> list[dict]:
+    def citing(self, work_id: str, limit: int, recent: bool = False) -> list[dict]:
         self.calls += 1
-        return [self.works[i] for i in self.citers.get(work_id, [])][:limit]
+        found = [self.works[i] for i in self.citers.get(work_id, [])]
+        if recent:
+            found.sort(key=lambda w: -w["publication_year"])
+        return found[:limit]
+
+    def works_by_dois(self, dois: list[str]) -> list[dict]:
+        self.calls += 1
+        return [w for w in self.works.values() if library.work_ids(w) & set(dois)]
 
     def search(self, query: str, limit: int) -> list[dict]:
         self.calls += 1
@@ -94,6 +101,25 @@ class FakeOpenAlex:
         return [w for w in self.works.values() if library.norm_title(w["display_name"]) == key]
 
 
+class FakeSource:
+    """Another reference list: names works by DOI, some OpenAlex already lists, one it lacks,
+    one it cannot find, and two entries with no DOI at all."""
+
+    name = "fakesource"
+
+    def __init__(self, refs: dict[str, set[str]] | None = None, fail: bool = False) -> None:
+        self.refs = refs if refs is not None else {"10.1/seed1": {"10.1/old", "10.1/extra", "10.1/nowhere"}}
+        self.fail = fail
+        self.asked: list[list[str]] = []
+
+    def references(self, dois: list[str], arxivs: list[str], title: str = ""):
+        self.asked.append(dois)
+        if self.fail:
+            raise library.ProviderError("Semantic Scholar HTTP 429")
+        found = [self.refs[d] for d in dois if d in self.refs]
+        return (set().union(*found), 2) if found else None
+
+
 class LibraryCase(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
@@ -101,6 +127,7 @@ class LibraryCase(unittest.TestCase):
         make_brain(self.root)
         make_research_project(self.root)
         self.provider = FakeOpenAlex()
+        self.sources: list | None = None
 
     def tearDown(self) -> None:
         self.temp.cleanup()
@@ -108,7 +135,7 @@ class LibraryCase(unittest.TestCase):
     def run_library(self, *args: str) -> tuple[int, str, str]:
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            code = library.main(["--root", str(self.root), *args], provider=self.provider)
+            code = library.main(["--root", str(self.root), *args], provider=self.provider, sources=self.sources)
         return code, out.getvalue(), err.getvalue()
 
     def lint(self):
@@ -440,6 +467,113 @@ class LibraryTests(LibraryCase):
         self.assertEqual(code, 3)
         self.assertIn("no step was written", err)
         self.assertFalse(self.step_path("step-01").exists())
+
+
+    def test_another_version_of_a_seed_is_not_its_own_reference(self) -> None:
+        # Seen 2026-10-29: the QJE "Generative AI at Work" listed its NBER working paper as a reference.
+        self.provider.works["W15"] = work("W15", "Seed paper two", 2023, doi="10.3386/w2", venue="NBER Working Papers",
+                                          venue_type="repository")
+        self.provider.works["W2"]["referenced_works"].append("https://openalex.org/W15")
+        candidates = self.references_step()
+        self.assertNotIn("Seed paper two", [c["title"] for c in candidates])
+        meta, _ = library.read_md(self.step_path("step-01"))
+        self.assertIn("input=1", meta["excluded"])
+
+    def test_preprint_with_its_own_doi_joins_the_published_version(self) -> None:
+        # bioRxiv, SSRN, and NBER mint DOIs for preprints; that DOI must not split the paper.
+        self.provider.works["W16"] = work("W16", "Older Baseline", 2018, doi="10.1101/2018.01.01.000001",
+                                          venue="bioRxiv", venue_type="repository", cited_by=7)
+        self.provider.works["W2"]["referenced_works"].append("https://openalex.org/W16")
+        baseline = [c for c in self.references_step() if c["title"].lower() == "older baseline"]
+        self.assertEqual(len(baseline), 1)
+        self.assertEqual((baseline[0]["venue"], baseline[0]["doi"], baseline[0]["cited_by"]), ("NeurIPS", "10.1/old", 907))
+
+    def test_reference_newer_than_the_citing_paper_is_flagged_not_dropped(self) -> None:
+        # Seen 2026-10-29: a wrong link (a 2024 paper among AlphaFold's 2021 references) and a wrong
+        # year ("Attention Is All You Need" dated 2025). The data cannot tell them apart.
+        self.provider.works["W21"] = work("W21", "Database update", 2025, doi="10.1/db2025", venue="NAR",
+                                          authors=("Someone Else",))
+        self.provider.works["W1"]["referenced_works"].append("https://openalex.org/W21")
+        candidates = self.references_step()
+        late = next(c for c in candidates if c["title"] == "Database update")
+        self.assertTrue(late["after_input"])
+        self.assertFalse(any(c["after_input"] for c in candidates if c is not late))
+        text = self.step_path("step-01").read_text(encoding="utf-8")
+        self.assertIn("| 2025 ⚠ |", text)
+        self.assertIn("`⚠` (1) = dated more than a year after", text)
+
+    def test_other_sources_add_references_openalex_missed(self) -> None:
+        self.provider.works["W30"] = work("W30", "A dataset OpenAlex forgot", 2018, doi="10.1/extra", venue="NAACL",
+                                          venue_type="conference", authors=("Someone Else",))
+        self.sources = [FakeSource()]
+        candidates = self.references_step()
+        extra = next(c for c in candidates if c["title"] == "A dataset OpenAlex forgot")
+        self.assertEqual(extra["found_by"], ["fakesource"])
+        baseline = next(c for c in candidates if c["title"] == "Older baseline")
+        self.assertEqual(baseline["found_by"], ["openalex"])
+        self.assertEqual(len([c for c in candidates if c["title"] == "Older baseline"]), 1)
+        meta, _ = library.read_md(self.step_path("step-01"))
+        self.assertIn("fakesource listed 5 (2 without DOI)", meta["supplement"])
+        self.assertIn("added 1 not in OpenAlex's list, 1 not found in OpenAlex", meta["supplement"])
+        self.assertIn("references also from fakesource", meta["filters"])
+        self.assertEqual(self.lint().returncode, 0)
+
+    def test_semantic_scholar_falls_back_to_an_exact_title_match(self) -> None:
+        # FActScore: Semantic Scholar does not know the EMNLP DOI, only the arXiv paper.
+        calls: list[str] = []
+
+        def fake_http(url: str, headers: dict, label: str, timeout: int = 30):
+            calls.append(url)
+            if "/search/match" in url:
+                return {"data": [{"paperId": "abc123", "title": "FActScore: Fine-grained Atomic Evaluation"}]}
+            if "/paper/abc123/references" in url:
+                return {"data": [{"citedPaper": {"externalIds": {"DOI": "10.1/A"}}},
+                                 {"citedPaper": {"externalIds": {"ArXiv": "2005.14165"}}},
+                                 {"citedPaper": {"externalIds": {}}}]}
+            return None
+
+        original, sleep = library.http_json, library.time.sleep
+        library.http_json, library.time.sleep = fake_http, lambda _s: None
+        try:
+            source = library.SemanticScholar()
+            found = source.references(["10.18653/v1/x"], [], "FActScore: fine-grained atomic evaluation")
+            self.assertEqual(found, ({"10.1/a", "10.48550/arxiv.2005.14165"}, 1))
+            self.assertIsNone(source.references(["10.1/none"], [], "A different title"))
+        finally:
+            library.http_json, library.time.sleep = original, sleep
+        self.assertIn("DOI:10.18653/v1/x/references", calls[0])
+
+    def test_failing_source_is_noted_and_the_step_is_still_written(self) -> None:
+        self.sources = [FakeSource(fail=True)]
+        candidates = self.references_step()
+        self.assertTrue(candidates)
+        meta, _ = library.read_md(self.step_path("step-01"))
+        self.assertIn("fakesource unavailable (Semantic Scholar HTTP 429)", meta["supplement"])
+
+    def test_openalex_only_does_not_ask_other_sources(self) -> None:
+        source = FakeSource()
+        self.sources = [source]
+        self.start_trail()
+        code, _, err = self.run_library("step", TRAIL, "--direction", "references", "--openalex-only", "--agent", "Claude")
+        self.assertEqual(code, 0, err)
+        self.assertEqual(source.asked, [])
+        meta, _ = library.read_md(self.step_path("step-01"))
+        self.assertEqual(meta["supplement"], "none")
+        self.assertIn("openalex only", meta["filters"])
+
+    def test_recent_citations_put_the_newest_first(self) -> None:
+        self.provider.works["W22"] = work("W22", "Newest follow-up", 2026, doi="10.1/newest", venue="ACL",
+                                          venue_type="conference", cited_by=0)
+        self.provider.citers = {"W1": ["W20", "W22"]}
+        self.start_trail()
+        code, _, err = self.run_library("step", TRAIL, "--direction", "citations", "--recent", "--agent", "Claude")
+        self.assertEqual(code, 0, err)
+        self.assertEqual([c["title"] for c in self.candidates("step-01")], ["Newest follow-up", "Later follow-up"])
+        meta, _ = library.read_md(self.step_path("step-01"))
+        self.assertIn("citing works per input newest", meta["filters"])
+        code, _, err = self.run_library("step", TRAIL, "--direction", "references", "--recent", "--agent", "Claude")
+        self.assertEqual(code, 2)
+        self.assertIn("--recent is only for --direction citations", err)
 
 
 class LibraryLintTests(LibraryCase):

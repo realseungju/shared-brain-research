@@ -133,8 +133,10 @@ published version had 46 references and 400 — so a preprint-only seed is joine
 published version by exact title. Retracted papers are excluded by default and counted.
 A library paper never counts as experiment evidence for a claim.
 
-Metadata comes from [OpenAlex](https://openalex.org). It works without a key on a small daily
-budget; a free key set in `OPENALEX_API_KEY` raises it. See
+Metadata comes from [OpenAlex](https://openalex.org). Its reference lists miss entries, so a
+references step also asks Crossref and Semantic Scholar and adds what they name; each candidate
+records which list found it. Everything works without keys on small budgets; free keys in
+`OPENALEX_API_KEY` and `SEMANTIC_SCHOLAR_API_KEY` raise them. See
 [`library/README.md`](library/README.md).
 
 ## Layout

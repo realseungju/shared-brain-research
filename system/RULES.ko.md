@@ -95,7 +95,7 @@ python infra/new-meeting.py {slug} --title "미팅 제목" --project {project}
 - AI는 단계를 실행하고 고를 것을 제안(`--by ai`)할 수 있지만, 사람 대신 `chosen`을 기록하지 않는다.
 - 검색이 끝난 단계의 후보를 고쳐 쓰지 않는다. 이전 단계에서 다시 갈라진다.
 - 도서관 논문은 선행연구이지 근거가 아니다. claim을 `supported`로 만들지 못한다.
-- OpenAlex 키는 사람이 `OPENALEX_API_KEY`에 넣는다. 파일에 쓰지 않는다.
+- API 키는 사람이 `OPENALEX_API_KEY`·`SEMANTIC_SCHOLAR_API_KEY`에 넣는다. 파일에 쓰지 않는다.
 
 ## 미팅 Feedback
 

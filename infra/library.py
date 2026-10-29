@@ -3,8 +3,9 @@
 
 The library keeps only papers a human chose. A trail records every search step — inputs,
 direction, candidates, and what was picked — so another agent can continue from any step.
-Metadata comes from OpenAlex. Preprint and published versions are merged into one record and
-the published version is shown first.
+Metadata comes from OpenAlex. A references step also asks Crossref and Semantic Scholar for the
+input's reference list and adds what OpenAlex missed, resolved back through OpenAlex. Preprint and
+published versions are merged into one record and the published version is shown first.
 """
 from __future__ import annotations
 
@@ -16,6 +17,7 @@ import os
 from pathlib import Path
 import re
 import sys
+import time
 import unicodedata
 import urllib.error
 import urllib.parse
@@ -104,10 +106,10 @@ class OpenAlex:
             works.extend(page.get("results", []))
         return works
 
-    def citing(self, work_id: str, limit: int) -> list[dict]:
+    def citing(self, work_id: str, limit: int, recent: bool = False) -> list[dict]:
         page = self._get("/works", {
             "filter": f"cites:{work_id}",
-            "sort": "cited_by_count:desc",
+            "sort": "publication_date:desc" if recent else "cited_by_count:desc",
             "per-page": str(min(limit, 200)),
             "select": SELECT,
         })
@@ -122,9 +124,119 @@ class OpenAlex:
         page = self._get("/works", {"filter": f"title.search:{cleaned}", "per-page": "10", "select": SELECT})
         return page.get("results", [])
 
+    def works_by_dois(self, dois: list[str]) -> list[dict]:
+        """A DOI with a filter separator in it cannot be asked for; the caller counts it as unresolved."""
+        usable = [d for d in dois if not re.search(r"[|,]", d)]
+        works: list[dict] = []
+        for start in range(0, len(usable), BATCH):
+            chunk = usable[start:start + BATCH]
+            page = self._get("/works", {"filter": "doi:" + "|".join(chunk), "per-page": str(len(chunk)), "select": SELECT})
+            works.extend(page.get("results", []))
+        return works
+
 
 def default_provider() -> OpenAlex:
     return OpenAlex(os.environ.get("OPENALEX_API_KEY") or None, os.environ.get("OPENALEX_MAILTO") or None)
+
+
+RATE_LIMIT_WAITS = (2, 5, 10)  # seconds before each retry after HTTP 429
+
+
+def http_json(url: str, headers: dict[str, str], label: str, timeout: int = 30) -> dict | None:
+    """None on 404 (the source does not know this paper); ProviderError on anything else.
+    A rate limit (429) is retried after a pause: keyless Semantic Scholar hits it often."""
+    request = urllib.request.Request(url, headers={"User-Agent": "shared-brain-research-library/0.1", **headers})
+    for wait in (*RATE_LIMIT_WAITS, None):
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                return json.load(response)
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404:
+                return None
+            if exc.code == 429 and wait is not None:
+                time.sleep(wait)
+                continue
+            raise ProviderError(f"{label} HTTP {exc.code}") from exc
+        except (urllib.error.URLError, TimeoutError) as exc:
+            raise ProviderError(f"{label} unreachable: {exc}") from exc
+    return None  # unreachable: the last pass returns or raises
+
+
+class Crossref:
+    """Reference lists as the publisher deposited them. Only a published DOI can have one; many
+    entries carry no DOI and are counted, not guessed."""
+
+    name = "crossref"
+
+    def __init__(self, mailto: str | None = None) -> None:
+        self.mailto = mailto
+
+    def references(self, dois: list[str], arxivs: list[str], title: str = "") -> tuple[set[str], int] | None:
+        headers = {"User-Agent": f"shared-brain-research-library/0.1 (mailto:{self.mailto})"} if self.mailto else {}
+        found: set[str] = set()
+        no_id, known = 0, False
+        for doi in dois:
+            data = http_json(f"https://api.crossref.org/works/{urllib.parse.quote(doi, safe='/')}", headers, "Crossref")
+            refs = ((data or {}).get("message") or {}).get("reference") or []
+            if refs:
+                known = True
+            for ref in refs:
+                if ref.get("DOI"):
+                    found.add(clean_doi(ref["DOI"]))
+                else:
+                    no_id += 1
+        return (found, no_id) if known else None
+
+
+class SemanticScholar:
+    """Keyless use is rate limited and fails often; a key in SEMANTIC_SCHOLAR_API_KEY helps.
+    It knows some papers only by their arXiv ID, so every version is tried."""
+
+    name = "semanticscholar"
+
+    def __init__(self, api_key: str | None = None) -> None:
+        self.api_key = api_key
+
+    def title_match(self, title: str, headers: dict[str, str]) -> str | None:
+        """Its paper ID for an exact title match, or None. Semantic Scholar sometimes knows a
+        paper only under an ID OpenAlex lacks (FActScore: arXiv only, not the EMNLP DOI)."""
+        url = ("https://api.semanticscholar.org/graph/v1/paper/search/match?"
+               + urllib.parse.urlencode({"query": title, "fields": "title"}))
+        data = http_json(url, headers, "Semantic Scholar")
+        best = ((data or {}).get("data") or [{}])[0]
+        return best.get("paperId") if norm_title(best.get("title") or "") == norm_title(title) else None
+
+    def references(self, dois: list[str], arxivs: list[str], title: str = "") -> tuple[set[str], int] | None:
+        headers = {"x-api-key": self.api_key} if self.api_key else {}
+        papers = [f"DOI:{d}" for d in dois] + [f"ARXIV:{a}" for a in arxivs] + ([None] if title else [])
+        for paper in papers:
+            if paper is None:
+                time.sleep(1)  # keyless use allows about one request a second
+                paper = self.title_match(title, headers)
+                if not paper:
+                    return None
+            url = (f"https://api.semanticscholar.org/graph/v1/paper/{urllib.parse.quote(paper, safe=':/')}"
+                   "/references?fields=externalIds&limit=1000")
+            data = http_json(url, headers, "Semantic Scholar")
+            if data is None or not data.get("data"):
+                continue
+            found: set[str] = set()
+            no_id = 0
+            for row in data["data"]:
+                ids = (row.get("citedPaper") or {}).get("externalIds") or {}
+                if ids.get("DOI"):
+                    found.add(clean_doi(ids["DOI"]))
+                elif ids.get("ArXiv"):
+                    found.add(f"10.48550/arxiv.{ids['ArXiv'].lower()}")
+                else:
+                    no_id += 1
+            return found, no_id
+        return None
+
+
+def default_reference_sources() -> list:
+    return [Crossref(os.environ.get("OPENALEX_MAILTO") or None),
+            SemanticScholar(os.environ.get("SEMANTIC_SCHOLAR_API_KEY") or None)]
 
 
 # ---------------------------------------------------------------- versions and identity
@@ -228,6 +340,12 @@ def work_authors(work: dict) -> tuple[list[str], int]:
     return names[:3], len(names)
 
 
+def published_dois(entry: dict) -> set[str]:
+    """Only a published version's DOI says which paper it is. A preprint server or working-paper
+    series (bioRxiv, SSRN, NBER) mints its own DOI for the same paper."""
+    return {v["doi"] for v in entry.get("versions", []) if v["kind"] == "published" and v["doi"]}
+
+
 def matches(entry: dict, version: dict, title_key: str) -> bool:
     """Same paper? Shared IDs first. A matching title links versions only when they share an
     author, do not carry different published DOIs, and are at most two years apart — otherwise
@@ -239,7 +357,8 @@ def matches(entry: dict, version: dict, title_key: str) -> bool:
     if version["arxiv"] and version["arxiv"] in entry["arxivs"]:
         return True
     if title_key and title_key == entry["norm"]:
-        if version["doi"] and entry["dois"] and version["doi"] not in entry["dois"]:
+        known = published_dois(entry)
+        if version["kind"] == "published" and version["doi"] and known and version["doi"] not in known:
             return False
         if not set(version.get("authors") or []) & entry["surnames"]:
             return False
@@ -274,6 +393,8 @@ def absorb(entry: dict, other: dict) -> None:
     for version in other["versions"]:
         add_version(entry, version)
     entry["via"].update(other["via"])
+    if other.get("found_by"):
+        entry.setdefault("found_by", set()).update(other["found_by"])
     if other["rank"] is not None and (entry["rank"] is None or other["rank"] < entry["rank"]):
         entry["rank"] = other["rank"]
     if not entry["authors"]:
@@ -289,7 +410,8 @@ def shares_id(entry: dict, version: dict) -> bool:
 
 
 def dois_conflict(entry: dict, other: dict) -> bool:
-    return bool(entry["dois"] and other["dois"] and entry["dois"].isdisjoint(other["dois"]))
+    mine, theirs = published_dois(entry), published_dois(other)
+    return bool(mine and theirs and mine.isdisjoint(theirs))
 
 
 def merge_work(pool: list[dict], work: dict, via: str | None, rank: int | None = None) -> dict:
@@ -712,20 +834,79 @@ def cmd_trail_new(lib: Library, provider: OpenAlex, args: argparse.Namespace) ->
     return 0
 
 
+def work_ids(work: dict) -> set[str]:
+    """DOIs a reference list can name this work by, the arXiv one included."""
+    version = version_of(work)
+    ids = {version["doi"]} if version["doi"] else set()
+    if version["arxiv"]:
+        ids.add(f"10.48550/arxiv.{version['arxiv'].lower()}")
+    return ids
+
+
+def supplement_references(provider: OpenAlex, sources: list, inputs: list[tuple[str, list[str]]],
+                          input_works: dict[str, dict], works: list[dict]) -> tuple[list[tuple[dict, set[str], str]], list[str]]:
+    """OpenAlex reference lists miss entries (seen 2026-10-29: FEVER and GPT-3 absent from
+    FActScore's). Ask other sources for the input's references and add the ones OpenAlex did not
+    list. A source that fails or does not know the paper is noted, never fatal."""
+    known = set().union(*(work_ids(w) for w in works)) if works else set()
+    wanted: dict[str, set[str]] = {}
+    found_by: dict[str, set[str]] = {}
+    notes: list[str] = []
+    for source in sources:
+        listed, added, no_id, missing = 0, 0, 0, 0
+        try:
+            for token, ids in inputs:
+                group = [input_works[i] for i in ids if i in input_works]
+                versions = [version_of(w) for w in group]
+                dois = [v["doi"] for v in versions if v["doi"]]
+                arxivs = [v["arxiv"] for v in versions if v["arxiv"]]
+                title = (group[0].get("display_name") or "") if group else ""
+                result = source.references(dois, arxivs, title)
+                if result is None:
+                    missing += 1
+                    continue
+                refs, unknown = result
+                listed += len(refs) + unknown
+                no_id += unknown
+                for doi in refs - known:
+                    wanted.setdefault(doi, set()).add(token)
+                    found_by.setdefault(doi, set()).add(source.name)
+                    added += 1
+        except ProviderError as exc:
+            notes.append(f"{source.name} unavailable ({exc})")
+            continue
+        if missing == len(inputs):
+            notes.append(f"{source.name} has no reference list")
+        else:
+            notes.append(f"{source.name} listed {listed} ({no_id} without DOI)")
+    resolved: list[tuple[dict, set[str], str]] = []
+    matched: set[str] = set()
+    if wanted:
+        for work in provider.works_by_dois(sorted(wanted)):
+            for doi in work_ids(work) & set(wanted):
+                matched.add(doi)
+                resolved.append((work, wanted[doi], "+".join(sorted(found_by[doi]))))
+    if sources:
+        notes.append(f"added {len({short_id(w.get('id')) for w, _, _ in resolved})} not in OpenAlex's list, "
+                     f"{len(set(wanted) - matched)} not found in OpenAlex")
+    return resolved, notes
+
+
 def gather(provider: OpenAlex, direction: str, inputs: list[tuple[str, list[str]]],
-           input_works: dict[str, dict], query: str | None, limit: int) -> list[dict]:
+           input_works: dict[str, dict], query: str | None, limit: int,
+           sources: list | None = None, recent: bool = False) -> tuple[list[dict], list[str]]:
     pool: list[dict] = []
     if direction == "search":
         for rank, work in enumerate(provider.search(query or "", limit * 2), start=1):
             merge_work(pool, work, None, rank)
-        return pool
+        return pool, []
     neighbours: dict[str, set[str]] = {}
     citing_works: dict[str, dict] = {}
     for token, ids in inputs:
         found: set[str] = set()
         for work_id in ids:
             if direction == "citations":
-                for work in provider.citing(work_id, CITATIONS_PER_INPUT):
+                for work in provider.citing(work_id, CITATIONS_PER_INPUT, recent):
                     citing_works[short_id(work.get("id"))] = work
                     found.add(short_id(work.get("id")))
             else:
@@ -741,7 +922,47 @@ def gather(provider: OpenAlex, direction: str, inputs: list[tuple[str, list[str]
         work_id = short_id(work.get("id"))
         entry = merge_work(pool, work, None)
         entry["via"].update(neighbours.get(work_id, set()))
-    return pool
+        entry.setdefault("found_by", set()).add("openalex")
+    notes: list[str] = []
+    if direction == "references" and sources:
+        extra, notes = supplement_references(provider, sources, inputs, input_works, works)
+        for work, tokens, names in extra:
+            entry = merge_work(pool, work, None)
+            entry["via"].update(tokens)
+            entry.setdefault("found_by", set()).update(names.split("+"))
+    return pool, notes
+
+
+def input_entries(inputs: list[tuple[str, list[str]]], input_works: dict[str, dict]) -> list[tuple[str, dict]]:
+    """Each input as one merged entry, so another version of it (an NBER working paper of a QJE
+    article, seen 2026-10-29) is recognised by the same title-and-author rule as candidates."""
+    entries = []
+    for token, ids in inputs:
+        group = [input_works[i] for i in ids if i in input_works]
+        if not group:
+            continue
+        entry = new_entry(group[0])
+        for work in group:
+            add_version(entry, version_of(work))
+        entries.append((token, entry))
+    return entries
+
+
+def is_input_version(entry: dict, inputs: list[tuple[str, dict]]) -> bool:
+    return any(
+        matches(seed, version, norm_title(entry["title"]))
+        for _, seed in inputs for version in entry["versions"]
+    )
+
+
+def later_than_inputs(entry: dict, inputs: list[tuple[str, dict]]) -> bool:
+    """A reference cannot be newer than the paper citing it; one year of slack covers in-press
+    citations. Past that, either the link or the year is wrong, and the data cannot say which
+    (seen 2026-10-29: a 2024 database paper among AlphaFold's 2021 references was a wrong link;
+    "Attention Is All You Need" dated 2025 was a wrong year). So it is flagged, not dropped."""
+    years = [v["year"] for v in entry["versions"] if v.get("year")]
+    citing = [v["year"] for token, seed in inputs if token in entry["via"] for v in seed["versions"] if v.get("year")]
+    return bool(years and citing and min(years) > max(citing) + 1)
 
 
 def cmd_step(lib: Library, provider: OpenAlex, args: argparse.Namespace) -> int:
@@ -773,17 +994,21 @@ def cmd_step(lib: Library, provider: OpenAlex, args: argparse.Namespace) -> int:
         input_works = {short_id(w.get("id")): w for w in provider.works_by_ids(all_ids)}
         inputs = [(token, with_published_versions(provider, ids, input_works)) for token, ids in inputs]
 
-    pool = gather(provider, args.direction, inputs, input_works, args.query, args.limit)
+    if args.recent and args.direction != "citations":
+        raise UsageError("--recent is only for --direction citations")
+    sources = [] if args.openalex_only or args.direction != "references" else args.sources
+    pool, notes = gather(provider, args.direction, inputs, input_works, args.query, args.limit, sources, args.recent)
 
     input_ids = {work_id for _, ids in inputs for work_id in ids}
     input_records = {t for t, _ in inputs if RECORD_RE.match(t)}
+    seeds = input_entries(inputs, input_works)
     excluded: dict[str, int] = {}
     kept: list[dict] = []
     for entry in pool:
         data = summarize(entry)
         data["library"] = lib.find_record(data) or ""
         reason = None
-        if input_ids & entry["openalex"] or data["library"] in input_records:
+        if input_ids & entry["openalex"] or data["library"] in input_records or is_input_version(entry, seeds):
             reason = "input"
         elif data["is_retracted"] and not args.include_retracted:
             reason = "retracted"
@@ -795,9 +1020,14 @@ def cmd_step(lib: Library, provider: OpenAlex, args: argparse.Namespace) -> int:
             excluded[reason] = excluded.get(reason, 0) + 1
             continue
         data["rank"] = entry["rank"]
+        if args.direction == "references":
+            data["found_by"] = sorted(entry.get("found_by") or ["openalex"])
+            data["after_input"] = later_than_inputs(entry, seeds)
         kept.append(data)
     if args.direction == "search":
         kept.sort(key=lambda d: (d["rank"] or 0, d["title"]))
+    elif args.recent:
+        kept.sort(key=lambda d: (-d["connections"], -(d["year"] or 0), -d["cited_by"], d["title"]))
     else:
         kept.sort(key=lambda d: (-d["connections"], -d["cited_by"], -(d["year"] or 0), d["title"]))
     if len(kept) > args.limit:
@@ -815,7 +1045,11 @@ def cmd_step(lib: Library, provider: OpenAlex, args: argparse.Namespace) -> int:
     if args.year:
         filters.append(f"year {args.year}")
     if args.direction == "citations":
-        filters.append(f"top {CITATIONS_PER_INPUT} citing works per input by citations")
+        order = "newest" if args.recent else "by citations"
+        filters.append(f"top {CITATIONS_PER_INPUT} citing works per input {order}")
+    if args.direction == "references":
+        filters.append("openalex only" if args.openalex_only else "references also from " + (
+            ", ".join(s.name for s in sources) if sources else "no other source"))
     meta = {
         "id": step_id,
         "trail": args.trail,
@@ -830,6 +1064,7 @@ def cmd_step(lib: Library, provider: OpenAlex, args: argparse.Namespace) -> int:
         "pool": str(len(pool)),
         "candidates": str(len(candidates)),
         "excluded": join_list([f"{k}={v}" for k, v in sorted(excluded.items())]),
+        "supplement": flat("; ".join(notes)) if notes else "none",
         "candidates_sha256": candidates_digest(candidates),
         "proposed": "none",
         "chosen": "none",
@@ -837,8 +1072,10 @@ def cmd_step(lib: Library, provider: OpenAlex, args: argparse.Namespace) -> int:
         "saved": "none",
         "agent": one_line(args.agent, "agent"),
     }
+    late = sum(1 for c in candidates if c.get("after_input"))
     rows = "\n".join(
-        f"| {c['n']} | {cell(c['title'])} | {cell(c['year'])} | {cell(c['venue'])} | {c['connections']} "
+        f"| {c['n']} | {cell(c['title'])} | {cell(c['year'])}{' ⚠' if c.get('after_input') else ''} "
+        f"| {cell(c['venue'])} | {c['connections']} "
         f"| {c['cited_by']} | {cell(c['library'])} |"
         for c in candidates
     )
@@ -846,9 +1083,13 @@ def cmd_step(lib: Library, provider: OpenAlex, args: argparse.Namespace) -> int:
     body = (
         f"\n# {step_id} · {args.direction}{origin}\n\n"
         f"Inputs: {join_list(tokens)}" + (f" · query `{args.query}`" if args.query else "") + "\n"
-        + (f"OpenAlex works used: {meta['input_versions']}\n" if inputs else "") + "\n"
+        + (f"OpenAlex works used: {meta['input_versions']}\n" if inputs else "")
+        + (f"Other reference lists: {meta['supplement']}. Each candidate's `found_by` says which list named it.\n"
+           if notes else "") + "\n"
         "`links` = how many inputs this paper connects to. `venue` shows the published version; "
-        "`preprint-only` means no published version was found.\n\n"
+        "`preprint-only` means no published version was found.\n"
+        + (f"`⚠` ({late}) = dated more than a year after the paper citing it: a wrong link or a wrong year. Check before saving.\n"
+           if late else "") + "\n"
         "## Candidates\n\n| # | title | year | venue | links | cited by | library |\n|---|---|---|---|---|---|---|\n"
         f"{rows}\n\n{CANDIDATES_HEADING}\n\n"
         "Written by `infra/library.py`. Do not edit — research-lint checks `candidates_sha256`.\n\n"
@@ -1083,6 +1324,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--include-retracted", action="store_true")
     p.add_argument("--exclude-preprint-only", action="store_true")
     p.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
+    p.add_argument("--openalex-only", action="store_true",
+                   help="references: do not add entries from Crossref or Semantic Scholar")
+    p.add_argument("--recent", action="store_true", help="citations: newest citing works instead of most cited")
     p.add_argument("--agent", required=True)
     p.set_defaults(func=cmd_step)
 
@@ -1111,7 +1355,9 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: list[str] | None = None, provider: OpenAlex | None = None) -> int:
+def main(argv: list[str] | None = None, provider: OpenAlex | None = None, sources: list | None = None) -> int:
+    """`sources` are the extra reference lists. A test that injects a provider and no sources
+    stays offline."""
     try:
         sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
         sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
@@ -1125,6 +1371,9 @@ def main(argv: list[str] | None = None, provider: OpenAlex | None = None) -> int
     if getattr(args, "limit", 1) < 1:
         print("[ERROR] --limit must be at least 1", file=sys.stderr)
         return 2
+    if sources is None:
+        sources = [] if provider is not None else default_reference_sources()
+    args.sources = sources
     try:
         return args.func(Library(root), provider or default_provider(), args)
     except UsageError as exc:

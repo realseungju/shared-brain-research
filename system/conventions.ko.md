@@ -167,11 +167,15 @@ protection으로 확인한다.
 | `parent` | 같은 trail의 이전 단계, 또는 `none` |
 | `direction` | `search` \| `references` \| `citations` \| `related` |
 | `inputs` | `L0001`, `W…`(한 논문의 판본은 `W…+W…`), 또는 `step-NN#k` |
-| `excluded` | 이유별 개수: `retracted`, `year`, `preprint-only`, `input`, `beyond-limit` |
+| `excluded` | 이유별 개수: `retracted`, `year`, `preprint-only`, `input`(입력 또는 그 다른 판본), `beyond-limit` |
+| `supplement` | 참고문헌 단계: Crossref·Semantic Scholar가 나열한 수, 더한 수, 실패한 출처. 그 밖에는 `none` |
 | `candidates_sha256` | 후보 레코드 digest — 후보를 고치면 lint 실패 |
 | `proposed` | AI가 제안한 번호. 저장되지 않음 |
 | `chosen` / `chosen_by` | 사람이 고른 번호. `chosen`이 있으면 `chosen_by: human` |
 | `saved` | `n=L0001` 쌍. chosen 번호만 |
+
+참고문헌 후보에는 `found_by`(어느 참고문헌 목록에서 찾았는지)와 `after_input`(인용한 논문보다 1년 넘게
+늦은 날짜 — 잘못된 연결이거나 잘못된 연도, 표에 `⚠`)도 붙는다.
 
 도서관 논문은 실험 근거가 아니다. `supported` claim은 `library:`를 가리킬 수 없다.
 

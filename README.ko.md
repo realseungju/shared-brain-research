@@ -124,9 +124,10 @@ arXiv 레코드는 참고문헌 0개·피인용 14건, 게재본은 참고문헌
 preprint만 있는 시작 논문은 같은 제목의 게재본과 함께 씁니다. 철회 논문은 기본으로 빼고 개수를
 남깁니다. 도서관 논문은 claim의 실험 근거로 세지 않습니다.
 
-메타데이터는 [OpenAlex](https://openalex.org)에서 옵니다. 키 없이도 작은 하루 예산으로
-되고, 무료 키를 `OPENALEX_API_KEY`에 넣으면 늘어납니다. 자세한 것은
-[`library/README.md`](library/README.md).
+메타데이터는 [OpenAlex](https://openalex.org)에서 옵니다. OpenAlex 참고문헌 목록에는 빠진 것이
+있어서, 참고문헌 단계는 Crossref와 Semantic Scholar에도 물어 더하고 후보마다 어느 목록에서
+찾았는지 남깁니다. 키 없이도 작은 예산으로 되고, 무료 키를 `OPENALEX_API_KEY`·
+`SEMANTIC_SCHOLAR_API_KEY`에 넣으면 늘어납니다. 자세한 것은 [`library/README.md`](library/README.md).
 
 ## 구조
 
