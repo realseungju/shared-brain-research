@@ -92,6 +92,16 @@ templates are in `research/README.md`.
   `skills/experiment-claim-check`. Lint sees whether evidence exists; it cannot
   see whether that evidence supports the claim.
 
+## Paper library
+
+Papers live in `library/`. The flow and limits are in `library/README.md`.
+
+- The library keeps only papers a human chose. Search candidates stay in the step file.
+- An AI may run steps and suggest picks (`--by ai`), but never records `chosen` for a person.
+- Never edit a step's candidates after the search. Branch from an earlier step instead.
+- A library paper is prior work, not evidence. It never makes a claim `supported`.
+- API keys are set by the human in `OPENALEX_API_KEY` and `SEMANTIC_SCHOLAR_API_KEY`. Never write them to a file.
+
 ## Meeting feedback
 
 Meeting files live in `feedback/meetings/`. The full contract is in `feedback/README.md`.

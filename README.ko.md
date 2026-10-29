@@ -112,11 +112,29 @@ triage된 상태는 `human_approved: yes`를 기록하고 lint는 이 provenance
 자세한 규칙은 [`feedback/README.md`](feedback/README.md), 완성 예시는
 [`example meeting`](examples/feedback/meetings/2026-07-28-weekly-review.md)에 있습니다.
 
+## 논문 도서관
+
+AI에게 논문 몇 편에서 출발해 넓혀 달라고 요청합니다. 참고문헌(과거)·피인용(이후)·관련 논문·
+키워드 검색 중 하나로 찾고, 검색 한 번이 단계 파일 하나로 남습니다. 다른 AI가 그 단계에서
+이어 찾거나 갈라질 수 있습니다. AI가 후보 표를 보여 주면 사람이 번호를 고르고, 고른 논문만
+도서관 레코드가 됩니다.
+
+preprint와 게재본은 한 레코드로 합치고 게재처를 먼저 보입니다. 실제로 확인해 보니 한 논문의
+arXiv 레코드는 참고문헌 0개·피인용 14건, 게재본은 참고문헌 46개·피인용 400건이었습니다. 그래서
+preprint만 있는 시작 논문은 같은 제목의 게재본과 함께 씁니다. 철회 논문은 기본으로 빼고 개수를
+남깁니다. 도서관 논문은 claim의 실험 근거로 세지 않습니다.
+
+메타데이터는 [OpenAlex](https://openalex.org)에서 옵니다. OpenAlex 참고문헌 목록에는 빠진 것이
+있어서, 참고문헌 단계는 Crossref와 Semantic Scholar에도 물어 더하고 후보마다 어느 목록에서
+찾았는지 남깁니다. 키 없이도 작은 예산으로 되고, 무료 키를 `OPENALEX_API_KEY`·
+`SEMANTIC_SCHOLAR_API_KEY`에 넣으면 늘어납니다. 자세한 것은 [`library/README.md`](library/README.md).
+
 ## 구조
 
 ```text
 system/       운영 규칙·현재 context·session 인계·ADR
 research/     프로젝트별 질문·실험·근거·주장
+library/      고른 논문·컬렉션·탐색 기록
 feedback/     redacted 미팅과 사람이 분류한 feedback
 tasks/        backlog / doing / done
 specs/        구현 명세
@@ -142,6 +160,7 @@ stub이라 지원 플랫폼마다 같은 시작 계약을 사용합니다.
   누출, 불균형한 튜닝 예산, 경계에 붙은 스윕, 검정 없는 차이. 운영 경험에 재현성 문헌의
   표준 점검을 더했다
 - redacted 기본 미팅 기록과 accept/reject/defer/validate 상태
+- 이어 갈 수 있는 탐색 기록·판본 병합·철회 필터·BibTeX 내보내기가 있는 논문 도서관
 - 교차 AI task·session 인계
 - Claude Code·Hermes·Codex CLI·Orca·Gemini·Copilot 진입점
 - task·session·experiment·meeting 생성기

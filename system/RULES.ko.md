@@ -87,6 +87,16 @@ python infra/new-meeting.py {slug} --title "미팅 제목" --project {project}
 - 수치를 **주장으로 굳히기 직전**(claim supported 승격·experiment 닫기·context로 옮기기)에는
   `skills/experiment-claim-check`를 적용한다. lint는 근거의 존재만 보고 타당성은 못 본다.
 
+## 논문 도서관
+
+논문은 `library/`에 둔다. 흐름과 한계는 `library/README.md`.
+
+- 도서관에는 사람이 고른 논문만 둔다. 검색 후보는 단계 파일 안에만 남는다.
+- AI는 단계를 실행하고 고를 것을 제안(`--by ai`)할 수 있지만, 사람 대신 `chosen`을 기록하지 않는다.
+- 검색이 끝난 단계의 후보를 고쳐 쓰지 않는다. 이전 단계에서 다시 갈라진다.
+- 도서관 논문은 선행연구이지 근거가 아니다. claim을 `supported`로 만들지 못한다.
+- API 키는 사람이 `OPENALEX_API_KEY`·`SEMANTIC_SCHOLAR_API_KEY`에 넣는다. 파일에 쓰지 않는다.
+
 ## 미팅 Feedback
 
 미팅 파일은 `feedback/meetings/`에 둔다. 상세 계약은 `feedback/README.md`.

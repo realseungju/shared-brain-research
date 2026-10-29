@@ -143,6 +143,42 @@ meeting의 `status: closed`는 모든 feedback이 `rejected` 또는 `validated`�
 lint는 필드와 상태 정합성을 검사하고, 실제 사람 승인 여부는 Git commit·PR 리뷰나 branch
 protection으로 확인한다.
 
+## 도서관과 trail
+
+`infra/library.py`가 도서관 파일을 모두 쓰고 `infra/research-lint.py`가 검사한다.
+레코드·단계를 손으로 만들지 않는다. 흐름과 한계는 `library/README.md`.
+
+레코드 frontmatter (`library/papers/L0001.md`):
+
+| 필드 | 값 |
+|---|---|
+| `id` | `L` + 숫자 4자리, 파일명과 같음 |
+| `venue` | 게재처, 또는 `preprint-only` |
+| `venue_type` | `journal` \| `conference` \| `other` \| `preprint` — `venue`가 `preprint-only`일 때만 `preprint` |
+| `openalex` | 이 레코드로 합친 OpenAlex work 전부 |
+| `is_retracted` | `yes` \| `no` |
+| `source_step` | `saved`에 이 레코드가 있는 `{trail}/{step}` |
+| `collections` | 컬렉션 slug. 각 컬렉션 파일도 이 레코드를 나열해야 함 |
+
+단계 frontmatter (`library/trails/{YYYY-MM-DD-slug}/step-NN.md`):
+
+| 필드 | 값 |
+|---|---|
+| `parent` | 같은 trail의 이전 단계, 또는 `none` |
+| `direction` | `search` \| `references` \| `citations` \| `related` |
+| `inputs` | `L0001`, `W…`(한 논문의 판본은 `W…+W…`), 또는 `step-NN#k` |
+| `excluded` | 이유별 개수: `retracted`, `year`, `preprint-only`, `input`(입력 또는 그 다른 판본), `beyond-limit` |
+| `supplement` | 참고문헌 단계: Crossref·Semantic Scholar가 나열한 수, 더한 수, 실패한 출처. 그 밖에는 `none` |
+| `candidates_sha256` | 후보 레코드 digest — 후보를 고치면 lint 실패 |
+| `proposed` | AI가 제안한 번호. 저장되지 않음 |
+| `chosen` / `chosen_by` | 사람이 고른 번호. `chosen`이 있으면 `chosen_by: human` |
+| `saved` | `n=L0001` 쌍. chosen 번호만 |
+
+참고문헌 후보에는 `found_by`(어느 참고문헌 목록에서 찾았는지)와 `after_input`(인용한 논문보다 1년 넘게
+늦은 날짜 — 잘못된 연결이거나 잘못된 연도, 표에 `⚠`)도 붙는다.
+
+도서관 논문은 실험 근거가 아니다. `supported` claim은 `library:`를 가리킬 수 없다.
+
 ## Commit
 
 Conventional Commits를 권장한다.

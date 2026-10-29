@@ -120,11 +120,31 @@ reason, while `validated` requires an observed verification result.
 See [`feedback/README.md`](feedback/README.md) and the
 [example meeting](examples/feedback/meetings/2026-07-28-weekly-review.md).
 
+## Paper library
+
+Ask the agent to start from a few papers and widen the search: references, later citations,
+related work, or a keyword search. Each search is a step file — a checkpoint another agent
+can continue or branch from. The agent shows the candidates; you pick the numbers. Only
+picked papers become library records.
+
+Preprint and published versions are merged and the published venue is shown first. In a
+real check, the arXiv record of one paper had no references and 14 citations while its
+published version had 46 references and 400 — so a preprint-only seed is joined with its
+published version by exact title. Retracted papers are excluded by default and counted.
+A library paper never counts as experiment evidence for a claim.
+
+Metadata comes from [OpenAlex](https://openalex.org). Its reference lists miss entries, so a
+references step also asks Crossref and Semantic Scholar and adds what they name; each candidate
+records which list found it. Everything works without keys on small budgets; free keys in
+`OPENALEX_API_KEY` and `SEMANTIC_SCHOLAR_API_KEY` raise them. See
+[`library/README.md`](library/README.md).
+
 ## Layout
 
 ```text
 system/       operating rules, current context, session handoffs, ADRs
 research/     questions, experiments, evidence, and claims by project
+library/      chosen papers, collections, and exploration trails
 feedback/     redacted meeting records and human-triaged feedback
 tasks/        backlog / doing / done
 specs/        implementation specifications
@@ -150,6 +170,8 @@ stubs pointing to it, so every supported platform gets the same startup contract
   reach: leakage, unequal tuning budgets, boundary-pinned sweeps, untested deltas —
   operational failure modes plus standard checks sourced from the reproducibility literature
 - Redacted-by-default meeting capture with accept/reject/defer/validate states
+- A paper library with resumable exploration trails, version merging, retraction filtering,
+  and BibTeX export
 - Cross-agent task and session handoffs
 - Claude Code, Hermes, Codex CLI, Orca, Gemini, and Copilot entry points
 - Generators for tasks, sessions, experiments, and meetings
