@@ -2,6 +2,8 @@
 
 Git-native experiment memory and cross-agent handoff for computational researchers.
 
+**Status: early MVP.** No external users or peer pilot yet, and the schemas may still change.
+
 한국어 문서: [README.ko.md](README.ko.md)
 
 Shared Brain Research turns a repository into the durable working memory for Claude Code,

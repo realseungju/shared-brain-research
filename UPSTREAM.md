@@ -34,4 +34,4 @@ core needs, and re-run the full suite (core + research) afterwards.
 
 | Upstream change | Why not |
 |---|---|
-| Approval-report renderer (`infra/render-report.py`, 2026-08-30) | On a two-week trial in the private brain. Nothing enters a distribution before it survives there. Revisit after 2026-09-13. |
+| Approval-report renderer (`infra/render-report.py`, 2026-08-30) | The private brain adopted it on 2026-09-10 after a two-week trial. Not brought into this distribution yet; revisit when a research workflow needs an approval view. |
