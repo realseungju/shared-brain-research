@@ -107,14 +107,15 @@ class FakeSource:
 
     name = "fakesource"
 
-    def __init__(self, refs: dict[str, set[str]] | None = None, fail: bool = False) -> None:
+    def __init__(self, refs: dict[str, set[str]] | None = None, fail: bool = False, fail_after: int | None = None) -> None:
         self.refs = refs if refs is not None else {"10.1/seed1": {"10.1/old", "10.1/extra", "10.1/nowhere"}}
         self.fail = fail
+        self.fail_after = fail_after
         self.asked: list[list[str]] = []
 
     def references(self, dois: list[str], arxivs: list[str], title: str = ""):
         self.asked.append(dois)
-        if self.fail:
+        if self.fail or (self.fail_after is not None and len(self.asked) > self.fail_after):
             raise library.ProviderError("Semantic Scholar HTTP 429")
         found = [self.refs[d] for d in dois if d in self.refs]
         return (set().union(*found), 2) if found else None
@@ -509,8 +510,9 @@ class LibraryTests(LibraryCase):
         candidates = self.references_step()
         extra = next(c for c in candidates if c["title"] == "A dataset OpenAlex forgot")
         self.assertEqual(extra["found_by"], ["fakesource"])
+        # OpenAlex lists W14 only under W2; the other source names it under W1 too.
         baseline = next(c for c in candidates if c["title"] == "Older baseline")
-        self.assertEqual(baseline["found_by"], ["openalex"])
+        self.assertEqual((baseline["found_by"], baseline["connections"]), (["fakesource", "openalex"], 2))
         self.assertEqual(len([c for c in candidates if c["title"] == "Older baseline"]), 1)
         meta, _ = library.read_md(self.step_path("step-01"))
         self.assertIn("fakesource listed 5 (2 without DOI)", meta["supplement"])
@@ -550,6 +552,30 @@ class LibraryTests(LibraryCase):
         meta, _ = library.read_md(self.step_path("step-01"))
         self.assertIn("fakesource unavailable (Semantic Scholar HTTP 429)", meta["supplement"])
 
+    def test_source_failing_on_a_later_input_keeps_what_it_added_and_says_so(self) -> None:
+        self.provider.works["W30"] = work("W30", "A dataset OpenAlex forgot", 2018, doi="10.1/extra", venue="NAACL",
+                                          venue_type="conference", authors=("Someone Else",))
+        self.sources = [FakeSource(fail_after=1)]
+        candidates = self.references_step()
+        self.assertIn("A dataset OpenAlex forgot", [c["title"] for c in candidates])
+        meta, _ = library.read_md(self.step_path("step-01"))
+        self.assertIn("fakesource unavailable after 1 of 2 inputs, which listed 5", meta["supplement"])
+        self.assertIn("added 1 not in OpenAlex's list", meta["supplement"])
+
+    def test_another_paper_with_the_seed_title_is_kept_when_its_published_doi_differs(self) -> None:
+        # Codex check 5: a different paper's preprint alone passed the title rule, so the whole
+        # candidate was dropped as an input version.
+        self.provider.works["W17"] = work("W17", "Seed paper two", 2024, doi="10.9/other", venue="JMLR")
+        self.provider.works["W18"] = work("W18", "Seed paper two", 2024, doi="10.2139/ssrn.1", venue="SSRN",
+                                          venue_type="repository")
+        self.provider.works["W1"]["referenced_works"] += ["https://openalex.org/W17", "https://openalex.org/W18"]
+        candidates = self.references_step()
+        same_title = [c for c in candidates if c["title"] == "Seed paper two"]
+        self.assertEqual(len(same_title), 1)
+        self.assertEqual(same_title[0]["doi"], "10.9/other")
+        meta, _ = library.read_md(self.step_path("step-01"))
+        self.assertNotIn("input=", meta["excluded"])
+
     def test_openalex_only_does_not_ask_other_sources(self) -> None:
         source = FakeSource()
         self.sources = [source]
@@ -560,6 +586,20 @@ class LibraryTests(LibraryCase):
         meta, _ = library.read_md(self.step_path("step-01"))
         self.assertEqual(meta["supplement"], "none")
         self.assertIn("openalex only", meta["filters"])
+
+    def test_recent_citations_order_by_full_date_within_a_year(self) -> None:
+        # Codex check 5: sorting by year alone put a January paper with more citations first.
+        self.provider.works["W23"] = dict(work("W23", "October paper", 2026, doi="10.1/oct", cited_by=0),
+                                          publication_date="2026-10-29")
+        self.provider.works["W24"] = dict(work("W24", "January paper", 2026, doi="10.1/jan", cited_by=999),
+                                          publication_date="2026-01-01")
+        self.provider.citers = {"W1": ["W23", "W24"]}
+        self.start_trail()
+        code, _, err = self.run_library("step", TRAIL, "--direction", "citations", "--recent", "--limit", "1",
+                                        "--agent", "Claude")
+        self.assertEqual(code, 0, err)
+        self.assertEqual([c["title"] for c in self.candidates("step-01")], ["October paper"])
+        self.assertNotIn("date", self.candidates("step-01")[0])
 
     def test_recent_citations_put_the_newest_first(self) -> None:
         self.provider.works["W22"] = work("W22", "Newest follow-up", 2026, doi="10.1/newest", venue="ACL",

@@ -37,7 +37,7 @@ DIRECTIONS = ("search", "references", "citations", "related")
 PUBLISHED_SOURCE_TYPES = {"journal": "journal", "conference": "conference", "book series": "other", "ebook platform": "other"}
 OPENALEX = "https://api.openalex.org"
 SELECT = ",".join((
-    "id", "doi", "display_name", "publication_year", "cited_by_count", "is_retracted", "type",
+    "id", "doi", "display_name", "publication_year", "publication_date", "cited_by_count", "is_retracted", "type",
     "authorships", "primary_location", "locations", "referenced_works", "related_works",
 ))
 DEFAULT_LIMIT = 25
@@ -395,6 +395,8 @@ def absorb(entry: dict, other: dict) -> None:
     entry["via"].update(other["via"])
     if other.get("found_by"):
         entry.setdefault("found_by", set()).update(other["found_by"])
+    if other.get("date"):
+        entry["date"] = max(entry.get("date") or "", other["date"])
     if other["rank"] is not None and (entry["rank"] is None or other["rank"] < entry["rank"]):
         entry["rank"] = other["rank"]
     if not entry["authors"]:
@@ -848,14 +850,16 @@ def supplement_references(provider: OpenAlex, sources: list, inputs: list[tuple[
     """OpenAlex reference lists miss entries (seen 2026-10-29: FEVER and GPT-3 absent from
     FActScore's). Ask other sources for the input's references and add the ones OpenAlex did not
     list. A source that fails or does not know the paper is noted, never fatal."""
-    known = set().union(*(work_ids(w) for w in works)) if works else set()
+    known = {doi: work for work in works for doi in work_ids(work)}
     wanted: dict[str, set[str]] = {}
     found_by: dict[str, set[str]] = {}
+    links: dict[str, set[str]] = {}  # papers OpenAlex already listed, named by another source for some input
     notes: list[str] = []
     for source in sources:
-        listed, added, no_id, missing = 0, 0, 0, 0
+        listed, no_id, missing, asked = 0, 0, 0, 0
         try:
             for token, ids in inputs:
+                asked += 1
                 group = [input_works[i] for i in ids if i in input_works]
                 versions = [version_of(w) for w in group]
                 dois = [v["doi"] for v in versions if v["doi"]]
@@ -868,12 +872,12 @@ def supplement_references(provider: OpenAlex, sources: list, inputs: list[tuple[
                 refs, unknown = result
                 listed += len(refs) + unknown
                 no_id += unknown
-                for doi in refs - known:
-                    wanted.setdefault(doi, set()).add(token)
+                for doi in refs:
+                    (links if doi in known else wanted).setdefault(doi, set()).add(token)
                     found_by.setdefault(doi, set()).add(source.name)
-                    added += 1
         except ProviderError as exc:
-            notes.append(f"{source.name} unavailable ({exc})")
+            done = f" after {asked - 1} of {len(inputs)} inputs, which listed {listed}" if asked > 1 else ""
+            notes.append(f"{source.name} unavailable{done} ({exc})")
             continue
         if missing == len(inputs):
             notes.append(f"{source.name} has no reference list")
@@ -886,9 +890,11 @@ def supplement_references(provider: OpenAlex, sources: list, inputs: list[tuple[
             for doi in work_ids(work) & set(wanted):
                 matched.add(doi)
                 resolved.append((work, wanted[doi], "+".join(sorted(found_by[doi]))))
+    added = len({short_id(w.get("id")) for w, _, _ in resolved})
+    for doi, tokens in links.items():  # no lookup needed; the extra input link and source still count
+        resolved.append((known[doi], tokens, "+".join(sorted(found_by[doi]))))
     if sources:
-        notes.append(f"added {len({short_id(w.get('id')) for w, _, _ in resolved})} not in OpenAlex's list, "
-                     f"{len(set(wanted) - matched)} not found in OpenAlex")
+        notes.append(f"added {added} not in OpenAlex's list, {len(set(wanted) - matched)} not found in OpenAlex")
     return resolved, notes
 
 
@@ -923,6 +929,7 @@ def gather(provider: OpenAlex, direction: str, inputs: list[tuple[str, list[str]
         entry = merge_work(pool, work, None)
         entry["via"].update(neighbours.get(work_id, set()))
         entry.setdefault("found_by", set()).add("openalex")
+        entry["date"] = max(entry.get("date") or "", work.get("publication_date") or "")
     notes: list[str] = []
     if direction == "references" and sources:
         extra, notes = supplement_references(provider, sources, inputs, input_works, works)
@@ -949,10 +956,17 @@ def input_entries(inputs: list[tuple[str, list[str]]], input_works: dict[str, di
 
 
 def is_input_version(entry: dict, inputs: list[tuple[str, dict]]) -> bool:
-    return any(
-        matches(seed, version, norm_title(entry["title"]))
-        for _, seed in inputs for version in entry["versions"]
-    )
+    """A shared ID settles it. Otherwise the whole candidate is weighed, not one version: a
+    candidate whose published DOI differs from the input's is another paper even when its
+    preprint alone would pass the title rule."""
+    for _, seed in inputs:
+        if any(shares_id(seed, version) for version in entry["versions"]):
+            return True
+        if dois_conflict(seed, entry):
+            continue
+        if any(matches(seed, version, norm_title(entry["title"])) for version in entry["versions"]):
+            return True
+    return False
 
 
 def later_than_inputs(entry: dict, inputs: list[tuple[str, dict]]) -> bool:
@@ -1020,14 +1034,16 @@ def cmd_step(lib: Library, provider: OpenAlex, args: argparse.Namespace) -> int:
             excluded[reason] = excluded.get(reason, 0) + 1
             continue
         data["rank"] = entry["rank"]
+        data["date"] = entry.get("date") or str(data["year"] or "")
         if args.direction == "references":
             data["found_by"] = sorted(entry.get("found_by") or ["openalex"])
             data["after_input"] = later_than_inputs(entry, seeds)
         kept.append(data)
     if args.direction == "search":
         kept.sort(key=lambda d: (d["rank"] or 0, d["title"]))
-    elif args.recent:
-        kept.sort(key=lambda d: (-d["connections"], -(d["year"] or 0), -d["cited_by"], d["title"]))
+    elif args.recent:  # newest first by full date; same-year papers keep their real order
+        kept.sort(key=lambda d: d["title"])
+        kept.sort(key=lambda d: (d["connections"], d["date"], d["cited_by"]), reverse=True)
     else:
         kept.sort(key=lambda d: (-d["connections"], -d["cited_by"], -(d["year"] or 0), d["title"]))
     if len(kept) > args.limit:
@@ -1037,6 +1053,7 @@ def cmd_step(lib: Library, provider: OpenAlex, args: argparse.Namespace) -> int:
     candidates = []
     for number, data in enumerate(kept, start=1):
         data.pop("rank", None)
+        data.pop("date", None)
         candidates.append({"n": number, **data})
 
     filters = ["exclude-retracted" if not args.include_retracted else "include-retracted"]
