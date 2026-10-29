@@ -171,7 +171,8 @@ class Crossref:
     def __init__(self, mailto: str | None = None) -> None:
         self.mailto = mailto
 
-    def references(self, dois: list[str], arxivs: list[str], title: str = "") -> tuple[set[str], int] | None:
+    def references(self, dois: list[str], arxivs: list[str], title: str = "",
+                   authors: list[str] | None = None) -> tuple[set[str], int] | None:
         headers = {"User-Agent": f"shared-brain-research-library/0.1 (mailto:{self.mailto})"} if self.mailto else {}
         found: set[str] = set()
         no_id, known = 0, False
@@ -193,31 +194,47 @@ class SemanticScholar:
     It knows some papers only by their arXiv ID, so every version is tried."""
 
     name = "semanticscholar"
+    MIN_INTERVAL = 1.1  # seconds; a key allows one request a second, and bursts drew 429s even with one
 
     def __init__(self, api_key: str | None = None) -> None:
         self.api_key = api_key
+        self.last = 0.0
 
-    def title_match(self, title: str, headers: dict[str, str]) -> str | None:
-        """Its paper ID for an exact title match, or None. Semantic Scholar sometimes knows a
-        paper only under an ID OpenAlex lacks (FActScore: arXiv only, not the EMNLP DOI)."""
+    def get(self, url: str, headers: dict[str, str]) -> dict | None:
+        wait = self.last + self.MIN_INTERVAL - time.monotonic()
+        if wait > 0:
+            time.sleep(wait)
+        try:
+            return http_json(url, headers, "Semantic Scholar")
+        finally:
+            self.last = time.monotonic()
+
+    def title_match(self, title: str, authors: list[str], headers: dict[str, str]) -> str | None:
+        """Its paper ID for an exact title match that shares an author, or None. Semantic Scholar
+        sometimes knows a paper only under an ID OpenAlex lacks (FActScore: arXiv only, not the
+        EMNLP DOI). The author check is the same rule versions merge by."""
         url = ("https://api.semanticscholar.org/graph/v1/paper/search/match?"
-               + urllib.parse.urlencode({"query": title, "fields": "title"}))
-        data = http_json(url, headers, "Semantic Scholar")
+               + urllib.parse.urlencode({"query": title, "fields": "title,authors"}))
+        data = self.get(url, headers)
         best = ((data or {}).get("data") or [{}])[0]
-        return best.get("paperId") if norm_title(best.get("title") or "") == norm_title(title) else None
+        if norm_title(best.get("title") or "") != norm_title(title):
+            return None
+        theirs = set().union(*(name_keys(a.get("name") or "") for a in best.get("authors") or [])) if best.get("authors") else set()
+        ours = set().union(*(name_keys(n) for n in authors)) if authors else set()
+        return best.get("paperId") if ours & theirs else None
 
-    def references(self, dois: list[str], arxivs: list[str], title: str = "") -> tuple[set[str], int] | None:
+    def references(self, dois: list[str], arxivs: list[str], title: str = "",
+                   authors: list[str] | None = None) -> tuple[set[str], int] | None:
         headers = {"x-api-key": self.api_key} if self.api_key else {}
-        papers = [f"DOI:{d}" for d in dois] + [f"ARXIV:{a}" for a in arxivs] + ([None] if title else [])
+        papers = [f"DOI:{d}" for d in dois] + [f"ARXIV:{a}" for a in arxivs] + ([None] if title and authors else [])
         for paper in papers:
             if paper is None:
-                time.sleep(1)  # keyless use allows about one request a second
-                paper = self.title_match(title, headers)
+                paper = self.title_match(title, authors or [], headers)
                 if not paper:
                     return None
             url = (f"https://api.semanticscholar.org/graph/v1/paper/{urllib.parse.quote(paper, safe=':/')}"
                    "/references?fields=externalIds&limit=1000")
-            data = http_json(url, headers, "Semantic Scholar")
+            data = self.get(url, headers)
             if data is None or not data.get("data"):
                 continue
             found: set[str] = set()
@@ -865,7 +882,9 @@ def supplement_references(provider: OpenAlex, sources: list, inputs: list[tuple[
                 dois = [v["doi"] for v in versions if v["doi"]]
                 arxivs = [v["arxiv"] for v in versions if v["arxiv"]]
                 title = (group[0].get("display_name") or "") if group else ""
-                result = source.references(dois, arxivs, title)
+                authors = sorted({(a.get("author") or {}).get("display_name") or "" for w in group
+                                  for a in w.get("authorships") or []} - {""})
+                result = source.references(dois, arxivs, title, authors)
                 if result is None:
                     missing += 1
                     continue

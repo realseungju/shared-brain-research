@@ -113,7 +113,7 @@ class FakeSource:
         self.fail_after = fail_after
         self.asked: list[list[str]] = []
 
-    def references(self, dois: list[str], arxivs: list[str], title: str = ""):
+    def references(self, dois: list[str], arxivs: list[str], title: str = "", authors: list[str] | None = None):
         self.asked.append(dois)
         if self.fail or (self.fail_after is not None and len(self.asked) > self.fail_after):
             raise library.ProviderError("Semantic Scholar HTTP 429")
@@ -527,7 +527,8 @@ class LibraryTests(LibraryCase):
         def fake_http(url: str, headers: dict, label: str, timeout: int = 30):
             calls.append(url)
             if "/search/match" in url:
-                return {"data": [{"paperId": "abc123", "title": "FActScore: Fine-grained Atomic Evaluation"}]}
+                return {"data": [{"paperId": "abc123", "title": "FActScore: Fine-grained Atomic Evaluation",
+                                  "authors": [{"name": "Sewon Min"}, {"name": "Kalpesh Krishna"}]}]}
             if "/paper/abc123/references" in url:
                 return {"data": [{"citedPaper": {"externalIds": {"DOI": "10.1/A"}}},
                                  {"citedPaper": {"externalIds": {"ArXiv": "2005.14165"}}},
@@ -538,12 +539,34 @@ class LibraryTests(LibraryCase):
         library.http_json, library.time.sleep = fake_http, lambda _s: None
         try:
             source = library.SemanticScholar()
-            found = source.references(["10.18653/v1/x"], [], "FActScore: fine-grained atomic evaluation")
+            source.MIN_INTERVAL = 0
+            found = source.references(["10.18653/v1/x"], [], "FActScore: fine-grained atomic evaluation", ["Min Sewon"])
             self.assertEqual(found, ({"10.1/a", "10.48550/arxiv.2005.14165"}, 1))
-            self.assertIsNone(source.references(["10.1/none"], [], "A different title"))
+            self.assertIsNone(source.references(["10.1/none"], [], "A different title", ["Sewon Min"]))
+            # Same title, no shared author: another paper, not this one.
+            self.assertIsNone(source.references(["10.1/none"], [], "FActScore: fine-grained atomic evaluation",
+                                                ["Wei Zhang"]))
         finally:
             library.http_json, library.time.sleep = original, sleep
         self.assertIn("DOI:10.18653/v1/x/references", calls[0])
+
+    def test_semantic_scholar_spaces_its_requests(self) -> None:
+        # A key allows one request a second; back-to-back DOI, arXiv, match, and references calls drew 429s.
+        clock = [100.0]
+        slept: list[float] = []
+
+        def sleep(seconds: float) -> None:
+            slept.append(round(seconds, 2))
+            clock[0] += seconds
+
+        original = (library.http_json, library.time.sleep, library.time.monotonic)
+        library.http_json = lambda *_a, **_k: None
+        library.time.sleep, library.time.monotonic = sleep, lambda: clock[0]
+        try:
+            library.SemanticScholar().references(["10.1/a", "10.1/b"], ["2401.00001"])
+        finally:
+            library.http_json, library.time.sleep, library.time.monotonic = original
+        self.assertEqual(slept, [1.1, 1.1])
 
     def test_failing_source_is_noted_and_the_step_is_still_written(self) -> None:
         self.sources = [FakeSource(fail=True)]

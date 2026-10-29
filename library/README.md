@@ -79,7 +79,7 @@ FEVER·GPT-3·BERTScore가 없었다. 그래서 `references` 단계는 두 목�
 | 출처 | 아는 것 | 모르는 것 |
 |---|---|---|
 | Crossref | 출판사가 등록한 참고문헌(게재 DOI가 있어야 함) | ACL Anthology처럼 등록하지 않은 곳, DOI 없는 항목 |
-| Semantic Scholar | 컴퓨터과학·preprint에 강함. DOI·arXiv ID로 못 찾으면 **정확히 같은 제목**으로 찾는다 | 키 없이 쓰면 요청 제한(429)이 잦다 |
+| Semantic Scholar | 컴퓨터과학·preprint에 강함. DOI·arXiv ID로 못 찾으면 **정확히 같은 제목 + 겹치는 저자**로 찾는다 | 키 없이 쓰면 요청 제한(429)이 잦다. 키가 있어도 요청은 1.1초 간격 |
 
 - 두 목록이 DOI·arXiv ID로 이름 댄 논문 중 OpenAlex 목록에 없는 것만 OpenAlex에서 다시 찾아 후보에 더한다.
   OpenAlex에 없으면 더하지 않고 `not found in OpenAlex`로 센다. ID 없는 항목은 추측하지 않고 `without DOI`로 센다.
@@ -87,6 +87,9 @@ FEVER·GPT-3·BERTScore가 없었다. 그래서 `references` 단계는 두 목�
 - 보조 출처가 실패해도 단계는 쓴다(OpenAlex 실패만 단계를 막는다). 실패는 `supplement`에 `unavailable`로 남는다.
 - 요청 제한(429)은 2·5·10초 쉬고 다시 시도한다.
 - `--openalex-only`를 주면 보조 출처에 묻지 않는다.
+- `found_by: [semanticscholar]`만 있는 후보는 한 번 더 본다. 2026-10-29 6편에서 이런 후보 61개 중 5~6개는 인용 문자열이
+  다른 논문으로 잘못 연결된 것으로 보였다(예: BERT 인용이 「BERT: A Review of Applications…」로, 제목 「MEETING SUMMARIES」).
+  눈으로 본 판정이다. 같은 6편을 키를 넣고 4번 돌린 후보 목록은 매번 같았다.
 
 같은 4편으로 Research Rabbit과 견준 결과(2026-10-29, 제목 앞 8단어 기준, 중복 제거 후 겹친 수):
 
