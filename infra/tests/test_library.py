@@ -240,6 +240,18 @@ class LibraryTests(LibraryCase):
         self.assertIn("step-03 ← step-01 · related", trail)
         self.assertEqual(self.lint().returncode, 0)
 
+    def test_show_gives_the_next_agent_each_step_s_inputs(self) -> None:
+        self.references_step()
+        self.run_library("choose", TRAIL, "step-01", "--pick", "1", "--by", "ai", "--agent", "Claude")
+        code, _, err = self.run_library("step", TRAIL, "--from", "step-01", "--add", "step-01#1", "--direction",
+                                        "citations", "--agent", "Claude")
+        self.assertEqual(code, 0, err)
+        code, out, _ = self.run_library("show", TRAIL)
+        self.assertEqual(code, 0)
+        self.assertIn("      inputs: W1, W2, step-01#1", out)
+        self.assertIn("filters: exclude-retracted", out)
+        self.assertIn("proposed numbers are not carried", out)
+
     def test_arxiv_seed_is_joined_with_its_published_version(self) -> None:
         # Seen on real OpenAlex data: the arXiv record had no references; the published one had 46.
         self.provider.works["W40"] = work("W40", "Preprint seed", 2023, doi="10.48550/arxiv.2401.00040",

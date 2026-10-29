@@ -19,7 +19,8 @@ trail-new (질문 + 시작 논문)
 → step: 입력 논문 × 방향 → 후보 목록       (references · citations · related · search)
 → choose --by human: 사람이 고름            (AI가 고르면 --by ai → proposed 로만 남음)
 → choose --save: 고른 것만 도서관 레코드가 됨
-→ step --from step-NN: 그 단계의 입력 + 고른 것이 다음 입력. 이전 단계에서 다시 갈라져도 뒤 단계는 지우지 않는다
+→ step --from step-NN: 그 단계의 입력 + 고른 것(chosen)이 다음 입력. AI 제안(proposed)은 따라가지 않는다 — 쓰려면 --add step-NN#k.
+  이전 단계에서 다시 갈라져도 뒤 단계는 지우지 않는다
 ```
 
 ```sh
@@ -34,6 +35,9 @@ python infra/library.py show 2026-10-27-factuality
 python infra/library.py export factuality --bibtex --out refs.bib
 python infra/library.py refresh
 ```
+
+이어받는 에이전트는 `show`로 단계마다 입력·필터·보조 출처를 본 뒤 `--from`으로 잇는다. 2026-10-29 Codex가 이 흐름으로
+Claude의 trail을 step-02에서 이어 갔다(AC 1).
 
 사용자는 명령을 직접 치지 않는다. 「이 두 논문에서 출발해 참고문헌을 넓혀 줘」처럼 말하면
 에이전트가 실행하고, 후보 표를 보여 준 뒤 **사람이 번호를 고른다**.

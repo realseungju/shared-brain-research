@@ -1210,6 +1210,14 @@ def cmd_show(lib: Library, provider: OpenAlex, args: argparse.Namespace) -> int:
             f" · chosen {meta.get('chosen')} ({meta.get('chosen_by')}) · proposed {meta.get('proposed')}"
             f" · saved {meta.get('saved')} · {meta.get('agent')}"
         )
+        # The next agent resumes from inputs; without them it had to open every step file (AC 1, 2026-10-29).
+        print(f"      inputs: {meta.get('inputs')}" + (f" · query `{meta.get('query')}`" if meta.get("query") not in (None, "none") else ""))
+        if meta.get("filters"):
+            print(f"      filters: {meta.get('filters')} · excluded {meta.get('excluded')}")
+        if meta.get("supplement") not in (None, "none"):
+            print(f"      other reference lists: {meta.get('supplement')}")
+    print("  --from step-NN carries that step's inputs and chosen papers; proposed numbers are not carried — "
+          "pass them with --add step-NN#k")
     return 0
 
 
