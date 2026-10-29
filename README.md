@@ -2,7 +2,7 @@
 
 Git-native experiment memory and cross-agent handoff for computational researchers.
 
-**Status: early MVP.** No external users or peer pilot yet, and the schemas may still change.
+**Status: 0.1 — early release.** The record schema may still change; see [CHANGELOG.md](CHANGELOG.md).
 
 한국어 문서: [README.ko.md](README.ko.md)
 
@@ -139,7 +139,8 @@ Metadata comes from [OpenAlex](https://openalex.org). Its reference lists miss e
 references step also asks Crossref and Semantic Scholar and adds what they name; each candidate
 records which list found it. Everything works without keys on small budgets; free keys in
 `OPENALEX_API_KEY` and `SEMANTIC_SCHOLAR_API_KEY` raise them. See
-[`library/README.md`](library/README.md).
+[`library/README.md`](library/README.md), and [`examples/library/`](examples/library/) for a real
+three-step trail with one paper a person chose and its BibTeX export.
 
 ## Layout
 

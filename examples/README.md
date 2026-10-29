@@ -13,10 +13,15 @@ Tier 0에 남의 기록이 그대로 섞입니다. 그래서 실제 산출물이
 | `sessions/` | Claude Code가 계획하고 Hermes가 이어받는 두 session |
 | `tasks/` | experiment 결과 경로로 닫힌 task |
 | `cross-agent-demo/` | 교차 AI 인계 재현 절차 |
+| `library/` | 실제로 돌린 도서관 trail(`demo-vision` 선행연구): 참고문헌 → 피인용(최신순)·관련 논문 갈라지기, 사람이 고른 1편, BibTeX |
 
 ## 주의
 
 - 수치·commit·dataset은 전부 가상 fixture다. 실제 모델 성능이나 연구 결과가 아니다.
+- 예외: `library/`는 2026-10-29 OpenAlex·Crossref·Semantic Scholar로 실제로 돌린 결과다. 논문 정보는 실제지만
+  그날 시점의 값이다. `step-01`의 `chosen_by: human`은 사람이 직접 고른 것이다(Deep RL That Matters).
+  `step-01`의 13번 「Datasheets for datasets」에 붙은 `⚠`는 실제 사례다 — 2019년 논문이 인용한 것은 2018 arXiv 판인데
+  OpenAlex는 2021 CACM 판으로 연결했다.
 - 파일을 그대로 복사해 live 기록으로 쓰지 말고 생성기로 만든다:
 
 ```sh

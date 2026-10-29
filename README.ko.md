@@ -2,7 +2,7 @@
 
 계산 연구자를 위한 Git 기반 실험 기억·교차 AI 인계 시스템입니다.
 
-**상태: 초기 MVP.** 외부 사용자와 동료 pilot이 아직 없고, 스키마가 바뀔 수 있습니다.
+**상태: 0.1 — 초기 공개판.** 기록 스키마는 바뀔 수 있습니다. [CHANGELOG.md](CHANGELOG.md)를 보세요.
 
 English: [README.md](README.md)
 
@@ -130,6 +130,7 @@ preprint만 있는 시작 논문은 같은 제목의 게재본과 함께 씁니�
 있어서, 참고문헌 단계는 Crossref와 Semantic Scholar에도 물어 더하고 후보마다 어느 목록에서
 찾았는지 남깁니다. 키 없이도 작은 예산으로 되고, 무료 키를 `OPENALEX_API_KEY`·
 `SEMANTIC_SCHOLAR_API_KEY`에 넣으면 늘어납니다. 자세한 것은 [`library/README.md`](library/README.md).
+실제로 돌린 3단계 trail, 사람이 고른 논문 1편, BibTeX 내보내기 예시는 [`examples/library/`](examples/library/)에 있습니다.
 
 ## 구조
 
