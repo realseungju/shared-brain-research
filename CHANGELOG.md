@@ -34,11 +34,6 @@ opened. It is derived from [`shared-brain-lite`](https://github.com/realseungju/
 - `examples/library/` — a real three-step trail with one saved paper and its BibTeX export.
 - `CHANGELOG.md`, `SECURITY.md`, and CI on Ubuntu and Windows with Python 3.10 and the latest.
 
-### Changed
-
-- Orca is no longer listed as a supported platform. It launches agents; it is not one.
-  The supported agents are Claude Code, Codex CLI, and Hermes, plus Gemini and Copilot entry stubs.
-
 ### Validation
 
 - 99 regression tests and `research-lint` in CI.
