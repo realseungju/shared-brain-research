@@ -2,6 +2,8 @@
 
 계산 연구자를 위한 Git 기반 실험 기억·교차 AI 인계 시스템입니다.
 
+**상태: 초기 MVP.** 외부 사용자와 동료 pilot이 아직 없고, 스키마가 바뀔 수 있습니다.
+
 English: [README.md](README.md)
 
 Shared Brain Research는 저장소를 Claude Code·Hermes·Orca·Codex CLI 같은 AI의 지속 가능한
