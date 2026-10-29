@@ -32,6 +32,8 @@ class ExampleArtifactTests(unittest.TestCase):
         self.assertTrue(sorted(EXAMPLES.glob("tasks/*.md")), "no example task")
         self.assertTrue(sorted(EXAMPLES.glob("research/*/overview.md")), "no example research project")
         self.assertTrue(sorted(EXAMPLES.glob("feedback/meetings/*.md")), "no example meeting")
+        self.assertTrue(sorted(EXAMPLES.glob("library/trails/*/step-*.md")), "no example library trail")
+        self.assertTrue(sorted(EXAMPLES.glob("library/papers/L*.md")), "no example library record")
 
     def test_examples_pass_lint_in_place(self) -> None:
         index_lines = []
@@ -46,6 +48,8 @@ class ExampleArtifactTests(unittest.TestCase):
             shutil.copy(path, self.root / "tasks/done" / path.name)
         shutil.copytree(EXAMPLES / "research", self.root / "research", dirs_exist_ok=True)
         shutil.copytree(EXAMPLES / "feedback", self.root / "feedback", dirs_exist_ok=True)
+        for part in ("trails", "papers", "collections"):
+            shutil.copytree(EXAMPLES / "library" / part, self.root / "library" / part, dirs_exist_ok=True)
 
         result = run_script("research-lint.py", str(self.root))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

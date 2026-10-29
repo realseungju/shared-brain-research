@@ -1,5 +1,5 @@
 > **Canonical: [`RULES.md`](RULES.md) (English).** This is a translation and may lag.
-> Synced from commit: `730a0e8`.
+> Synced from commit: `4c7c42e`.
 > 이 문서는 번역본입니다. 규칙이 어긋나면 영어 정본이 우선합니다.
 
 # RULES — Shared Brain Research 운영 규칙
@@ -110,6 +110,10 @@ python infra/new-meeting.py {slug} --title "미팅 제목" --project {project}
   확인한다.
 
 `personal/`은 상속 호환성을 위한 빈 확장점이며 이 배포판의 기능 범위가 아니다.
+
+## 선택 영역
+
+`personal/`은 기반 스타터와의 호환을 위해 남긴 빈 확장 지점이다. 이 배포판의 범위가 아니다.
 
 ## 금지
 

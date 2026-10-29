@@ -2,12 +2,12 @@
 
 Git-native experiment memory and cross-agent handoff for computational researchers.
 
-**Status: early MVP.** No external users or peer pilot yet, and the schemas may still change.
+**Status: 0.1 — early release.** The record schema may still change; see [CHANGELOG.md](CHANGELOG.md).
 
 한국어 문서: [README.ko.md](README.ko.md)
 
 Shared Brain Research turns a repository into the durable working memory for Claude Code,
-Hermes, Orca, Codex CLI, and other coding agents. It keeps research questions, experiment
+Hermes, Codex CLI, and other coding agents. It keeps research questions, experiment
 conditions, evidence, claims, meeting feedback, tasks, and session handoffs in plain
 Markdown with a lint gate that rejects unsupported state transitions.
 
@@ -51,7 +51,7 @@ Python dependencies.
 > hypothesis, and create a planned baseline experiment. Ask me before accepting any claim
 > or meeting feedback.
 
-4. Keep using the same repository from Claude Code, Hermes, Orca, Codex CLI, or another
+4. Keep using the same repository from Claude Code, Hermes, Codex CLI, or another
    compatible agent. Commit and push when another machine or colleague needs the state.
 
 You normally do **not** type the Python commands yourself. Agents use these canonical
@@ -139,7 +139,8 @@ Metadata comes from [OpenAlex](https://openalex.org). Its reference lists miss e
 references step also asks Crossref and Semantic Scholar and adds what they name; each candidate
 records which list found it. Everything works without keys on small budgets; free keys in
 `OPENALEX_API_KEY` and `SEMANTIC_SCHOLAR_API_KEY` raise them. See
-[`library/README.md`](library/README.md).
+[`library/README.md`](library/README.md), and [`examples/library/`](examples/library/) for a real
+three-step trail with one paper a person chose and its BibTeX export.
 
 ## Layout
 
@@ -175,7 +176,7 @@ stubs pointing to it, so every supported platform gets the same startup contract
 - A paper library with resumable exploration trails, version merging, retraction filtering,
   and BibTeX export
 - Cross-agent task and session handoffs
-- Claude Code, Hermes, Codex CLI, Orca, Gemini, and Copilot entry points
+- Claude Code, Hermes, Codex CLI, Gemini, and Copilot entry points
 - Generators for tasks, sessions, experiments, and meetings
 - `research-lint` in pre-commit and GitHub Actions
 - A tested cross-agent demonstration fixture
@@ -195,7 +196,7 @@ research work and feedback provenance are the product.
 ## Platform compatibility
 
 The repository contract and installed CLI behavior have been checked for Claude Code,
-Hermes, Codex CLI, and Orca. This is structural compatibility, not a model-quality
+Hermes, and Codex CLI. This is structural compatibility, not a model-quality
 benchmark. See [`docs/platform-compatibility.md`](docs/platform-compatibility.md).
 
 ## Validation
