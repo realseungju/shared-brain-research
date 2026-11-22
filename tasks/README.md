@@ -4,14 +4,15 @@
 backlog/ → doing/ → done/
 ```
 
-연구 실행·구현·검증처럼 완료 조건이 있는 작업을 둔다. 질문과 결과는 `research/`, 미팅
-출처는 `feedback/`에 두고 task에서는 그 경로를 링크한다.
+Work with a done condition — running research, implementing, validating — lives here. Questions
+and results go in `research/`, meeting sources in `feedback/`, and a task links to those paths.
 
-새 task는 AI가 생성기를 사용해 만든다.
+The AI creates a new task with the generator.
 
 ```sh
-python infra/new-task.py {slug} --title "제목"
+python infra/new-task.py {slug} --title "Title"
 ```
 
-파일 생성 뒤 성공 기준과 관련 experiment·feedback 경로를 채운다. `doing/`으로 옮길 때
-agent·started를, `done/`으로 닫을 때 finished·closed_reason·실제 result를 기록한다.
+After creation, fill in the success criteria and the related experiment and feedback paths. When
+moving it to `doing/`, record `agent` and `started`; when closing it into `done/`, record
+`finished`, `closed_reason`, and the real `result`.

@@ -1,15 +1,15 @@
 ---
-title: "제목"
+title: "Title"
 type: concept
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 tags: []
 ---
 
-# 제목
+# Title
 
-## 요약
+## Summary
 
-## 근거
+## Evidence
 
-## 연결
+## Links

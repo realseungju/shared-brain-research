@@ -5,10 +5,10 @@
 infra/hooks/* text eol=lf
 system/sessions/*.md text eol=lf
 
-# sessions/index.md 는 꼬리에 한 줄씩 append 하는 로그다. 두 사람(또는 두 워크트리)이
-# 각자 session 을 닫은 뒤 합치면 같은 줄 영역에서 확정적으로 충돌한다.
-# union = 양쪽 줄을 모두 보존. append-only 로그에 정확히 맞는 드라이버이며,
-# index 는 "꼬리를 훑는" 용도라 순서가 섞여도 무해하고 유실이 0인 쪽이 옳다.
-# 위 eol=lf 가 함께 있어야 한다 — CRLF 가 blob 에 박히면 매 줄이 byte 단위로 달라져
-# union 이 무력화되고 실제 conflict marker 가 뜬다.
+# sessions/index.md is a log that appends one line at its tail. When two people (or two
+# worktrees) each close a session and then merge, they conflict for certain in the same region.
+# union = keep both sides' lines. It is exactly the right driver for an append-only log: the
+# index is read by "skimming the tail", so mixed order is harmless and losing nothing is right.
+# The eol=lf above must stay with it — if CRLF gets into the blob, every line differs byte by
+# byte, union stops working, and real conflict markers appear.
 system/sessions/index.md merge=union

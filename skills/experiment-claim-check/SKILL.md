@@ -1,169 +1,194 @@
 ---
 name: experiment-claim-check
 description: >-
-  실험 수치를 claim·experiment 결론·session 요약에 **주장으로 기록하기 직전** 발동. 그 수치가
-  대상의 성질인지 측정 도구의 한계인지 가른다 — 경계에 붙은 스윕, argmax로만 읽은 모델,
-  재본 적 없는 "천장", 검정 없는 "+N pt". 루틴 부기·문서 오탈자엔 발동 금지.
+  Fires **just before an experimental number is written down as a claim** — in a claim, an
+  experiment's conclusion, or a session summary. Separates a property of the subject from a
+  limit of the measuring instrument: a sweep pinned to its boundary, a model read only through
+  argmax, a "ceiling" nobody re-measured, a "+N pt" with no test. Do not fire for routine
+  bookkeeping or typo fixes.
 ---
 
-# experiment-claim-check — 기록 직전 측정 점검
+# experiment-claim-check — a measurement check before recording
 
-> 이 스킬은 코드를 실행하지 않는다. **실험 수치가 주장으로 굳기 직전**에 거는 게이트다.
-> `research-lint`는 근거의 *존재*(경로·필드·사람 검토)를 검사하지만 근거의 *타당성*은 못 본다.
-> 그 층을 사람과 AI의 점검으로 메운다.
+한국어 번역: [`SKILL.ko.md`](SKILL.ko.md)
 
-## 왜 필요한가
+> This skill runs no code. It is a gate placed **just before an experimental number hardens
+> into a claim**. `research-lint` checks that evidence *exists* (a path, the fields, a human
+> review) but cannot see whether the evidence is *valid*. A check by a person and an AI fills
+> that layer.
 
-측정 도구의 한계가 대상의 성질로 둔갑한다. 한 번 문서에 박히면 **아무도 다시 재지 않는다** —
-"이미 아는 사실"이 되므로. 잘못된 수치 하나가 중심 주장이 되고, 그 위에 여러 단계의 후속
-설계가 쌓인 뒤에야 임계값 하나가 원인이었다는 게 드러나는 일이 실제로 일어난다.
+## Why it is needed
 
-**이 함정은 알아도 밟는다.** 같은 함정을 발견해 경고한 사람이 20분 뒤 스스로 같은 격자 버그를
-재현한 기록이 있다. 그래서 규율이 아니라 **발동 지점이 정해진 체크리스트**여야 한다.
+A limit of the measuring instrument passes itself off as a property of the subject. Once it is
+in a document, **nobody measures it again** — it has become "something we already know". One
+wrong number becomes the central claim, several rounds of follow-up design are stacked on it,
+and only then does it turn out that a single threshold was the cause. This really happens.
 
-> **출처를 구분해 둔다.** A군(1~6)은 상위 브레인 운영 중 반복 관측된 실패를 일반화한 것이다
-> — 구체 사례는 미공개 연구 내용이라 옮기지 않는다. 운영 경험 하나에서 나온 목록은 그
-> 프로젝트가 밟은 함정에 치우치므로, B군(7~10)은 재현성 문헌의 표준 점검으로 메웠다.
-> 각 항목의 근거는 아래 참고에 링크했다.
+**People fall into this trap even when they know it.** There is a record of someone who found
+this trap and warned about it reproducing the same grid bug twenty minutes later. So it has to
+be **a checklist with fixed trigger points**, not a matter of discipline.
 
-## 언제 발동하나
+> **Where the items come from.** Group A (1–6) generalizes failures observed repeatedly while
+> running the parent brain — the concrete cases are unpublished research and are not copied
+> here. A list drawn from one project's experience leans toward the traps that project hit, so
+> group B (7–10) fills in with standard checks from the reproducibility literature. Each item's
+> source is linked in the references below.
 
-이 저장소의 게이트와 맞물리는 지점:
+## When it fires
 
-- `research/{project}/claims.md`의 claim을 `supported`로 바꿀 때
-- experiment를 `completed`·`negative-result`로 닫으면서 `## 해석`을 쓸 때
-- session 요약이나 `system/context.md`에 수치를 결론으로 옮길 때
-- B군은 수치가 만들어지기 전 설계·분석 점검이다. 기록 시점에 확인되지 않았다면 멈추고
-  설계·분석 단계로 돌아간다.
+The points where it meshes with this repository's gates:
 
-특히 다음 형태의 문장을 쓰려 할 때 — **전부 정지 신호**:
+- Changing a claim in `research/{project}/claims.md` to `supported`
+- Closing an experiment as `completed` or `negative-result` and writing `## Interpretation`
+- Moving a number into a session summary or `system/context.md` as a conclusion
+- Group B checks design and analysis before the number exists. If they were not confirmed by
+  the time of recording, stop and go back to the design or analysis step.
 
-- "X가 천장/한계/상한이다"
-- "A가 B보다 N pt 우수하다"
-- "X는 무의미하다 / 효과 없다 / 병목이다"
-- "이 접근은 안 된다"
+In particular, when you are about to write a sentence of one of these shapes — **each one is a
+stop sign**:
 
-## A군 — 수치를 읽는 법 (기록 직전, 빠르게)
+- "X is the ceiling / the limit / the upper bound"
+- "A beats B by N pt"
+- "X is meaningless / has no effect / is the bottleneck"
+- "This approach does not work"
 
-**1. 스윕이 경계에 붙었나?**
-최적값이 격자의 처음이나 끝에 있으면 **대상보다 격자를 먼저 의심**한다. 반복해서 붙으면
-강한 재측정 신호지만, 실제 최적값이 허용 범위의 경계일 수도 있으므로 그 자체가 결함의
-확정 증거는 아니다. → 범위를 넓혀 재측정하거나, 경계가 정의상 유효한 이유와 대조 조건을 남긴다.
+## Group A — reading the number (just before recording, quickly)
 
-**2. 모델을 argmax로만 읽었나?**
-순위 지표(AUC)와 임계 포함 지표(F1)를 **함께** 재라. 둘이 크게 벌어지면 실력이 아니라
-**임계**가 망가졌을 가능성을 먼저 검사한다. 다른 데이터에서는 클래스 불균형·분포 이동
-등도 원인일 수 있으므로 readout을 재측정하기 전 capability 결론을 유보한다. 확률이 한쪽에
-몰려 있으면 **dev에서만** 임계 후보를 분위수로 뽑고, 손대지 않은 eval에서 확인한다.
+**1. Is the sweep pinned to a boundary?**
+If the optimum sits at the first or last point of the grid, **suspect the grid before the
+subject**. Repeated pinning is a strong signal to re-measure, but the true optimum can lie at
+the edge of the allowed range, so pinning alone is not proof of a defect. → Widen the range and
+re-measure, or record why the boundary is valid by definition along with a control condition.
 
-**3. "한계·천장"을 실제로 재봤나?**
-안 재봤으면 **"측정 안 됨(현재 최고 = X)"** 이라고 쓴다. "천장"이라고 쓰지 않는다.
-당시 최고 성적을 천장으로 승격하는 것이 이 실패의 표준 경로다.
+**2. Was the model read only through argmax?**
+Measure a ranking metric (AUC) and a threshold-dependent metric (F1) **together**. If they
+diverge sharply, first check whether the **threshold** is broken rather than the skill. On
+other data, class imbalance or distribution shift can also be the cause, so hold off on a
+capability conclusion until the readout is re-measured. If the probabilities bunch up on one
+side, pick threshold candidates from quantiles **on dev only** and confirm on an untouched eval
+set.
 
-**4. 차이를 검정했나?**
-"+N pt 우수"를 주장하려면 비교 설계에 맞는 불확실성 평가가 필요하다. 같은 인스턴스를
-예측했다면 **paired bootstrap** 같은 paired 방법이 예측 간 공분산을 보존해 독립 분석보다
-정밀할 수 있다. 재표집 단위는 데이터의 독립 단위(피험자·그룹 등)와 맞춘다.
-CI가 0을 포함하면 그 신뢰수준에서 **방향성 우위**를 주장하지 않는다. 추정치와 CI는
-`미결론`으로 보고할 수 있으며, 이를 "효과 없음"의 증거로 바꾸지 않는다.
-**CI 폭은 비교마다 다르다** — 한 비교의 폭을 다른 비교에 갖다 붙이지 마라.
+**3. Was the "limit" or "ceiling" actually measured?**
+If not, write **"not measured (current best = X)"**. Do not write "ceiling". Promoting the best
+score of the moment to a ceiling is the standard path of this failure.
 
-**5. 부품을 보완하기 전에 제대로 읽고 있나?**
-"약한 부품 X를 보완하려고 Y를 더한다"는 설계를 하기 전에, **X를 제대로 읽고 있는지**부터
-확인한다. Y의 기여를 재려면 "제대로 읽은 X 단독"이 기준선이어야 한다. 망가진 X를 기준선으로
-삼으면 Y의 기여가 부풀려진다.
+**4. Was the difference tested?**
+Claiming "+N pt better" needs an uncertainty estimate that fits the comparison design. If both
+systems predicted the same instances, a paired method such as the **paired bootstrap**
+preserves the covariance between predictions and can be more precise than an independent
+analysis. Match the resampling unit to the independent unit of the data (subject, group, and
+so on). If the CI contains 0, do not claim a **directional advantage** at that confidence
+level. The estimate and CI can be reported as "inconclusive"; do not turn that into evidence of
+"no effect". **CI width differs between comparisons** — do not borrow one comparison's width
+for another.
 
-**6. 유보를 떨어뜨리지 않았나?**
-출처가 "~일 수 있다"인데 인용문이 "~이다"가 되면 **검증 가능한 가설이 검증 불가능한 전제로**
-바뀐다. 인용할 때 유보를 함께 옮긴다.
+**5. Is the part read correctly before you compensate for it?**
+Before designing "add Y to make up for weak part X", check **whether X is being read
+correctly**. To measure Y's contribution, the baseline has to be "X alone, read correctly".
+With a broken X as the baseline, Y's contribution is inflated.
 
-## B군 — 수치가 만들어지기 전 (설계·분석 시점)
+**6. Did a hedge get dropped?**
+When the source says "may be" and the citation says "is", **a testable hypothesis becomes an
+untestable premise**. Carry the hedge along when you cite.
 
-A군을 다 통과해도 여기서 뚫리면 수치 자체가 질문에 답하지 못한다. 기록 시점에는 각 점검이
-실제로 수행됐는지 확인하고, 안 됐다면 결론을 쓰지 않는다.
+## Group B — before the number exists (at design and analysis time)
 
-**7. 누출(leakage)이 없나?**
-재현성 실패가 17개 분야·수백 편에서 확인된 광범위한 문제다. 빠른 게이트에서는 세 묶음으로 본다:
+Even if everything in group A passes, a hole here means the number cannot answer the question.
+At recording time, confirm each check was actually performed; if it was not, do not write the
+conclusion.
 
-- **train/test 분리**가 전처리·정규화·특징선택·증강·하이퍼파라미터 탐색 **전 과정**에서
-  유지됐나. 분할 전에 증강하면 같은 원본의 변형이 양쪽에 걸친다.
-- **비합법 feature**가 섞이지 않았나 — 예측 시점에 존재할 수 없는 정보, 결과의 대리변수.
-- **평가 표본이 독립적이고 관심 분포를 대표하나** — 시간 역전, 같은 피험자·같은 원본의
-  양쪽 분할, 출처·표집 편향을 확인한다.
+**7. Is there leakage?**
+Reproducibility failures from leakage have been documented across 17 fields and hundreds of
+papers. For a quick gate, look at three bundles:
 
-Kapoor & Narayanan의 세부 분류는 8종이다. 위 세 묶음은 30초 게이트용 재구성이지 원문의
-분류를 그대로 옮긴 것이 아니다. 게재본 조사 대상은 294편, 최신 arXiv판은 329편이다.
+- Was the **train/test split** kept through the **whole pipeline** — preprocessing,
+  normalization, feature selection, augmentation, hyperparameter search? Augmenting before the
+  split puts variants of one original on both sides.
+- Did **illegitimate features** slip in — information that cannot exist at prediction time, or
+  proxies for the outcome?
+- **Are the evaluation samples independent and representative of the distribution you care
+  about?** Check for time reversal, the same subject or original on both sides of the split,
+  and source or sampling bias.
 
-**8. 튜닝 예산 비교가 공정한가?**
-각 방법의 탐색 시행수·시간·연산량을 명시하고, 어떤 예산을 맞출지 비교 전에 정한다. 같은
-시행수가 같은 연산량은 아니며, 모든 방법에 숫자를 기계적으로 같게 주는 것도 공정을 보장하지
-않는다. 가능하면 **예산의 함수로 성능**을 보고한다. 내 모델만 충분히 튜닝하고 baseline은
-기본값으로 돌렸다면 관측 차이를 방법 자체의 우위로 귀속하지 않는다.
+Kapoor & Narayanan's detailed taxonomy has eight types. The three bundles above are a
+regrouping for a 30-second gate, not a copy of the original taxonomy. The published version
+surveyed 294 papers; the latest arXiv version surveys 329.
 
-**9. 여러 번 보고 최고만 고르지 않았나?**
-설정·지표·시드·임계를 여러 개 훑고 제일 좋은 하나를 보고하면 선택 편향이 생긴다. 확증적
-주장에는 비교군 전체에 맞는 **다중비교 보정**이나 손대지 않은 데이터의 독립 확인을 쓴다.
-같은 test set을 반복해 다음 설정을 고르는 **순차적 과적합**을 피하고, 최종 평가 데이터는
-따로 남긴다.
+**8. Is the tuning budget comparison fair?**
+State each method's search trials, time, and compute, and decide which budget to match before
+comparing. The same number of trials is not the same compute, and mechanically giving every
+method the same number does not guarantee fairness either. Where possible, report **performance
+as a function of budget**. If only your model was tuned thoroughly and the baseline ran on
+defaults, do not attribute the observed difference to the method itself.
 
-**10. 중요한 분산의 출처를 포함했나?**
-시드만 바꾼 편차는 고정된 split·탐색 절차에 조건부인 불확실성이다. 데이터 분할·초기화·
-데이터 순서·증강·하이퍼파라미터 선택 중 결론에 영향을 줄 수 있는 출처를 식별하고 흔든다.
-모든 출처를 무조건 전수 조합하라는 뜻은 아니다. 무엇을 고정했는지 밝히고, 단일 시드의
-"+N pt"를 일반적 우위의 근거로 쓰지 않는다.
+**9. Did you look many times and keep only the best?**
+Scanning several settings, metrics, seeds, or thresholds and reporting the best one creates
+selection bias. For confirmatory claims, use a **multiple-comparison correction** that covers
+the whole comparison set, or an independent check on untouched data. Avoid **sequential
+overfitting** — reusing the same test set to pick the next setting — and keep the final
+evaluation data apart.
 
-## 코드에 박을 가드 (내부 최적값을 기대하는 스윕에 복사)
+**10. Were the important sources of variance included?**
+Variation from changing only the seed is uncertainty conditional on a fixed split and search
+procedure. Identify which sources could affect the conclusion — data split, initialization,
+data order, augmentation, hyperparameter selection — and vary them. This does not mean every
+combination must be run. State what you held fixed, and do not use a single-seed "+N pt" as
+evidence of a general advantage.
+
+## A guard to put in code (copy into sweeps that expect an interior optimum)
 
 ```python
 def assert_interior(best, grid, name="tau"):
-    """스윕 최적값이 경계면 재측정·정당화 없이 조용히 넘기지 않는다."""
+    """Do not let a sweep optimum on the boundary pass silently without re-measurement or justification."""
     lo, hi = float(min(grid)), float(max(grid))
     if best <= lo or best >= hi:
         raise ValueError(
-            f"{name}={best} 가 격자 경계 [{lo}, {hi}] 에 붙었다. "
-            f"대상의 성질이 아니라 격자의 한계일 수 있다 — 범위를 넓혀 재측정할 것."
+            f"{name}={best} is pinned to the grid boundary [{lo}, {hi}]. "
+            f"This may be a limit of the grid, not a property of the subject — widen the range and re-measure."
         )
 ```
 
-**이 가드가 진짜 자동점검이다.** 단, 혼합 가중치 0/1처럼 경계해가 정의상 유효한 문제에
-무조건 복사하지 않는다. 그런 스윕은 경계가 결론일 수 있음을 명시하고 적절한 대조 조건으로
-확인한다. 이 저장소는 실험을 돌리지 않으므로 `research-lint`로는 못 잡는다 — 가드는 스윕이
-도는 **프로젝트 코드**에 둔다.
+**This guard is the real automatic check.** Do not copy it blindly into problems where a
+boundary solution is valid by definition, such as a mixing weight of 0 or 1. For those sweeps,
+state that the boundary may be the conclusion and confirm it with a suitable control
+condition. This repository does not run experiments, so `research-lint` cannot catch it — the
+guard belongs in the **project code** where the sweep runs.
 
-## 통과 후 기록법
+## How to record after passing
 
-점검 결과를 이 저장소의 필드에 그대로 옮긴다. 산문으로 흐리지 않는다.
+Copy the check result into this repository's fields as is. Do not blur it into prose.
 
-| 점검 결과 | `evidence_kind` | 쓰는 법 |
+| Check result | `evidence_kind` | How to write it |
 |---|---|---|
-| 검정까지 마친 측정 | `measured` | `n=1086, 20 seed, +0.093 ± 0.013 (paired bootstrap)` |
-| 관측했으나 검정 안 함 | `measured` + `## 한계`에 미검정 명시 | `관측 +0.021, 검정 안 함` |
-| 재보지 않은 상한·외삽 | `estimated` | `현재 최고 0.59. 천장은 측정 안 됨` |
-| 근거가 아직 없음 | `unverified` | claim은 `candidate`로 둔다 |
+| Measured and tested | `measured` | `n=1086, 20 seed, +0.093 ± 0.013 (paired bootstrap)` |
+| Observed but not tested | `measured`, with "not tested" stated under `## Limits` | `observed +0.021, not tested` |
+| Upper bound or extrapolation not measured | `estimated` | `current best 0.59; ceiling not measured` |
+| No evidence yet | `unverified` | Keep the claim as `candidate` |
 
-- `unverified`인 채로 experiment를 닫거나 claim을 `supported`로 올릴 수 없다 —
-  `research-lint`가 거부한다.
-- 점검에서 걸린 항목은 지우지 말고 experiment의 `## 한계`에 남긴다. 다음 사람이
-  같은 함정을 다시 밟지 않게 하는 것이 이 기록의 목적이다.
+- An experiment cannot be closed, and a claim cannot be raised to `supported`, while it is
+  `unverified` — `research-lint` rejects it.
+- Do not delete the items a check caught; leave them under the experiment's `## Limits`. The
+  point of this record is that the next person does not fall into the same trap.
 
-## 금지
+## Forbidden
 
-- 점검 없이 "천장·한계·무의미·+N pt"를 결론으로 기록
-- 불확실성 평가 없는 방향성 차이를 `supported` claim의 근거로 사용
-- 경계에 붙은 스윕 결과를 재측정이나 경계 정당화 없이 채택
-- CI가 0을 포함한다는 이유로 "효과 없음"을 확정
-- 튜닝 예산이 비교 불가능한 baseline과의 차이를 방법 우위로 귀속
-- 인용 과정에서 원출처의 유보를 떨어뜨리기
+- Recording "ceiling, limit, meaningless, +N pt" as a conclusion without the check
+- Using a directional difference with no uncertainty estimate as evidence for a `supported` claim
+- Adopting a boundary-pinned sweep result without re-measurement or a justification of the boundary
+- Settling "no effect" because the CI contains 0
+- Attributing a difference from a baseline with an incomparable tuning budget to the method
+- Dropping the original source's hedge while citing it
 
-## 참고 — B군의 근거
+## References — the sources for group B
 
-| 무엇 | 어디 |
+| What | Where |
 |---|---|
-| 누출 8종 분류와 17개 분야 실태 (7번) | [Kapoor & Narayanan, *Leakage and the Reproducibility Crisis in ML-based Science*](https://arxiv.org/abs/2207.07048) ([Patterns 게재본](https://www.cell.com/patterns/fulltext/S2666-3899(23)00159-9)) |
-| 분할 전 증강·순차적 과적합·다중비교·baseline (7·9번) | [Lones, *How to avoid machine learning pitfalls*](https://arxiv.org/abs/2108.02497) |
-| 예산에 따라 결론이 뒤집힘·예산의 함수로 보고 (8번) | [Dodge et al., *Show Your Work*](https://aclanthology.org/D19-1224/) |
-| 분할·초기화·하이퍼파라미터 등 분산 출처 (10번) | [Bouthillier et al., *Accounting for Variance in ML Benchmarks*](https://arxiv.org/abs/2103.03098) |
-| ML 기반 과학 보고 표준 32문항 | [REFORMS](https://www.science.org/doi/10.1126/sciadv.adk3452) |
+| Eight-type leakage taxonomy and its prevalence across 17 fields (item 7) | [Kapoor & Narayanan, *Leakage and the Reproducibility Crisis in ML-based Science*](https://arxiv.org/abs/2207.07048) ([published in Patterns](https://www.cell.com/patterns/fulltext/S2666-3899(23)00159-9)) |
+| Augmenting before the split, sequential overfitting, multiple comparisons, baselines (items 7 and 9) | [Lones, *How to avoid machine learning pitfalls*](https://arxiv.org/abs/2108.02497) |
+| Conclusions flip with budget; report as a function of budget (item 8) | [Dodge et al., *Show Your Work*](https://aclanthology.org/D19-1224/) |
+| Sources of variance such as split, initialization, hyperparameters (item 10) | [Bouthillier et al., *Accounting for Variance in ML Benchmarks*](https://arxiv.org/abs/2103.03098) |
+| 32-item reporting standard for ML-based science | [REFORMS](https://www.science.org/doi/10.1126/sciadv.adk3452) |
 
-REFORMS는 연구 설계·구현·보고 전반의 표준이고, 이 스킬은 수치를 주장으로 옮기는 지점의
-빠른 게이트다. 논문화 단계에서는 REFORMS를 별도로 적용한다.
+REFORMS is a standard covering study design, implementation, and reporting as a whole; this
+skill is a quick gate at the point where a number becomes a claim. Apply REFORMS separately at
+the paper-writing stage.

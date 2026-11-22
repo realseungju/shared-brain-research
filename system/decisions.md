@@ -1,5 +1,5 @@
-> **English is canonical here.** 한국어 번역본은 없습니다 —
-> `system/RULES.ko.md` 와 `system/conventions.ko.md` 가 운영 규칙의 한국어판입니다.
+> **English is canonical here.** This file has no Korean translation —
+> `system/RULES.ko.md` and `system/conventions.ko.md` are the Korean editions of the operating rules.
 
 # Decisions
 

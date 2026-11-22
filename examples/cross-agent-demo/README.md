@@ -1,32 +1,36 @@
-# Claude Code → Hermes 인계 데모
+# Claude Code → Hermes handoff demo
 
-이 fixture는 모델 성능 benchmark가 아니라 **저장소 계약이 인계를 가능하게 하는지** 재현한다.
+This fixture is not a model performance benchmark. It reproduces **whether the repository
+contract makes a handoff possible**.
 
 ## Turn 1 — Claude Code
 
-1. 저장소 루트에서 시작해 `CLAUDE.md` → Tier 0을 읽는다.
-2. Q001·H001과 baseline experiment 계획을 기록한다.
-3. session 훅에 다음 agent가 열 경로를 남긴다.
+1. Start at the repository root and read `CLAUDE.md` → Tier 0.
+2. Record Q001, H001, and the plan for the baseline experiment.
+3. Leave the path the next agent should open in the session hook.
 
-예시: `examples/sessions/2026-07-28-claude-baseline-plan.md`
+Example: `examples/sessions/2026-07-28-claude-baseline-plan.md`
 
 ## Turn 2 — Hermes
 
-1. 같은 저장소를 작업 디렉터리로 열면 Hermes가 `AGENTS.md`를 읽는다.
-2. Tier 0의 최신 session 훅과 doing task를 통해 experiment만 추가로 연다.
-3. 결과·한계·claim candidate를 기록하고, 사람 검토 뒤 claim을 supported로 바꾼다.
+1. Open the same repository as the working directory; Hermes reads `AGENTS.md`.
+2. Through the latest session hook in Tier 0 and the doing task, it opens only the experiment in
+   addition.
+3. It records results, limits, and a claim candidate, and after human review changes the claim to
+   supported.
 
-예시: `examples/sessions/2026-07-28-hermes-baseline-result.md`
+Example: `examples/sessions/2026-07-28-hermes-baseline-result.md`
 
-## Feedback 연결
+## Feedback link
 
-미팅 FB-01은 사람 승인 뒤 task로 연결된다. FB-02는 rejected, FB-03은 deferred다.
-다음 AI는 미팅 전체를 Tier 0으로 읽지 않고 accepted task에서 출처로 거슬러 올라간다.
+Meeting item FB-01 is linked to a task after human approval. FB-02 is rejected, FB-03 is
+deferred. The next AI does not read the whole meeting as Tier 0; it traces back from the
+accepted task to the source.
 
-## 재현
+## Reproduce
 
-회귀 테스트는 examples의 research·meeting·task·session을 빈 brain의 live 위치에 복사한 뒤
-`research-lint`를 실행한다.
+The regression test copies the examples' research, meeting, task, and session files into the
+live locations of an empty brain, then runs `research-lint`.
 
 ```sh
 python -m unittest infra.tests.test_examples -v

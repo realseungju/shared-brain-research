@@ -6,18 +6,18 @@ date: YYYY-MM-DD
 related_tasks: []
 ---
 
-# 기능 이름
+# Feature name
 
-## 목적
+## Purpose
 
-## 요구사항
+## Requirements
 
 1.
 
-## 비범위
+## Out of scope
 
 -
 
-## 완료 조건
+## Done when
 
 - [ ]
