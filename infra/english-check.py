@@ -17,7 +17,8 @@ import re
 import subprocess
 import sys
 
-HANGUL = re.compile("[가-힣]")
+# Hangul syllables U+AC00..U+D7A3, built with chr() so this file holds no Hangul and passes its own check.
+HANGUL = re.compile("[" + chr(0xAC00) + "-" + chr(0xD7A3) + "]")
 TRANSLATION_LINK = re.compile(r"\]\([^)]*\.ko\.md\)")
 EXEMPT_DIRS = ("infra/tests/",)
 
