@@ -9,6 +9,25 @@ breaking change.
 
 ## [Unreleased]
 
+### Changed
+
+- **English is canonical for every public document** (ADR-008). The claim-check skill, the
+  library guide, the folder READMEs, the platform notes, and the `specs/`, `skills/`,
+  `knowledge/`, and `inbox/` templates are now in English. The templates' section headings are
+  not enforced by lint, so existing records are unaffected.
+- `skills/experiment-claim-check/SKILL.ko.md` and `library/README.ko.md` keep the Korean text
+  as translations.
+
+### Added
+
+- `infra/english-check.py` lists lines that still contain Korean, outside translations, test
+  data, and lines linking to a translation. A test runs it on the tracked tree.
+
+### Fixed
+
+- The claim-check skill pointed at experiment sections that do not exist; it now names
+  `## Interpretation` and `## Limits`.
+
 ## [0.1.0] — 2026-10-29
 
 First tagged release, and the first public one. The distribution has been in use since

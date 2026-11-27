@@ -1,7 +1,7 @@
 # Knowledge Index
 
-재사용 가능한 지식 노드를 한 줄씩 등재한다.
+One line per reusable knowledge node.
 
 ```markdown
-- [[example-node]] — 한 줄 설명
+- [[example-node]] — one-line description
 ```

@@ -1,18 +1,18 @@
 ---
 name: example-skill
-description: 이 스킬을 언제 사용하는지 한 줄로 설명한다.
+description: One line on when to use this skill.
 ---
 
 # Example Skill
 
-## 목적
+## Purpose
 
-## 발동 조건
+## When it fires
 
-## 절차
+## Procedure
 
 1.
 
-## 금지
+## Forbidden
 
 -

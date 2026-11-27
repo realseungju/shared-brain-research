@@ -4,10 +4,10 @@ source: user
 processed: false
 ---
 
-# 아이디어 제목
+# Idea title
 
-## 무엇을
+## What
 
-## 왜
+## Why
 
-## 다음 판단
+## Next decision
